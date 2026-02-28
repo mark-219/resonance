@@ -1,7 +1,7 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { eq, and, gt } from 'drizzle-orm';
-import { randomBytes } from 'crypto';
+import { randomBytes, createHash } from 'crypto';
 import bcrypt from 'bcrypt';
 import { db } from '../db/index.js';
 import { users, sessions } from '../db/schema.js';
@@ -147,18 +147,23 @@ async function oidcLoginHandler(
     return reply.status(400).send({ error: 'OIDC is not configured' });
   }
 
-  // Generate PKCE code challenge
+  // Generate PKCE code verifier and S256 challenge
   const state = randomBytes(16).toString('hex');
-  const codeVerifier = randomBytes(32).toString('hex');
-  const codeChallenge = randomBytes(32).toString('hex'); // Simplified; in production use proper PKCE
+  const codeVerifier = randomBytes(32).toString('base64url');
+  const codeChallenge = createHash('sha256').update(codeVerifier).digest('base64url');
 
-  // Store state in session/cookie for verification
-  reply.setCookie('oidc_state', state, {
+  // Store state and code verifier in signed httpOnly cookies
+  const cookieOpts = {
     httpOnly: true,
     secure: config.SECURE_COOKIES,
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
+    path: '/',
     maxAge: 600, // 10 minutes
-  });
+    signed: true,
+  };
+
+  reply.setCookie('oidc_state', state, cookieOpts);
+  reply.setCookie('oidc_code_verifier', codeVerifier, cookieOpts);
 
   // Construct authorization URL
   const authorizationEndpoint = `${config.OIDC_ISSUER}/o/authorize/`;
@@ -168,6 +173,8 @@ async function oidcLoginHandler(
     response_type: 'code',
     scope: 'openid profile email',
     state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
   });
 
   return reply.redirect(`${authorizationEndpoint}?${params.toString()}`);
@@ -188,14 +195,20 @@ async function oidcCallbackHandler(
 
   const { code, state } = query.data;
 
-  // Verify state
-  const storedState = request.cookies.oidc_state;
-  if (!state || state !== storedState) {
+  // Verify signed state cookie
+  const stateCookie = request.unsignCookie(request.cookies.oidc_state || '');
+  if (!stateCookie.valid || !state || state !== stateCookie.value) {
     return reply.status(400).send({ error: 'Invalid state parameter' });
   }
 
+  // Retrieve signed code verifier cookie
+  const verifierCookie = request.unsignCookie(request.cookies.oidc_code_verifier || '');
+  if (!verifierCookie.valid || !verifierCookie.value) {
+    return reply.status(400).send({ error: 'Missing PKCE code verifier' });
+  }
+
   try {
-    // Exchange code for token (simplified - normally done server-side with client secret)
+    // Exchange code for token with PKCE code_verifier
     const tokenEndpoint = `${config.OIDC_ISSUER}/o/token/`;
     const tokenResponse = await fetch(tokenEndpoint, {
       method: 'POST',
@@ -207,6 +220,7 @@ async function oidcCallbackHandler(
         client_secret: config.OIDC_CLIENT_SECRET,
         redirect_uri:
           config.OIDC_REDIRECT_URI || `${config.CORS_ORIGIN}/auth/oidc/callback`,
+        code_verifier: verifierCookie.value,
       }).toString(),
     });
 
@@ -218,6 +232,32 @@ async function oidcCallbackHandler(
       access_token: string;
       id_token?: string;
     };
+
+    // Validate id_token claims (token fetched over TLS directly from issuer)
+    if (tokenData.id_token) {
+      const [, payloadB64] = tokenData.id_token.split('.');
+      if (!payloadB64) {
+        throw new Error('Malformed id_token');
+      }
+      const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString()) as {
+        iss?: string;
+        aud?: string | string[];
+        exp?: number;
+      };
+
+      if (payload.iss !== config.OIDC_ISSUER) {
+        throw new Error('id_token issuer mismatch');
+      }
+
+      const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+      if (!aud.includes(config.OIDC_CLIENT_ID)) {
+        throw new Error('id_token audience mismatch');
+      }
+
+      if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
+        throw new Error('id_token expired');
+      }
+    }
 
     // Fetch user info
     const userInfoEndpoint = `${config.OIDC_ISSUER}/o/userinfo/`;
