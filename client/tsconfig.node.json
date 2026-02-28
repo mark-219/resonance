@@ -8,6 +8,7 @@
     "emitDeclarationOnly": true,
     "allowImportingTsExtensions": true,
     "isolatedModules": true,
+    "types": ["node"],
     "strict": true,
     "skipLibCheck": true
   },
