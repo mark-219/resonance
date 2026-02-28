@@ -202,12 +202,14 @@ async function testConnectionHandler(
       conn.on('ready', () => {
         clearTimeout(timeout);
         // Get the fingerprint from the internal key exchange state
-        const key = (conn as unknown as { _sock?: { _host_key?: Buffer } })._sock?._host_key;
+        const key = (conn as unknown as { _sock?: { _host_key?: Buffer } })._sock
+          ?._host_key;
         let fingerprint = 'unknown';
 
         // ssh2 stores the host key hash internally; we compute SHA256 fingerprint
         // from the server's host key available after handshake
-        const transport = (conn as unknown as { _protocol?: { _hostKey?: Buffer } })._protocol;
+        const transport = (conn as unknown as { _protocol?: { _hostKey?: Buffer } })
+          ._protocol;
         if (transport?._hostKey) {
           const hash = createHash('sha256').update(transport._hostKey).digest('base64');
           fingerprint = `SHA256:${hash}`;

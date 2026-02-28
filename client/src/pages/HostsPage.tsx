@@ -33,13 +33,7 @@ interface HostFormData {
   privateKeyPath: string;
 }
 
-function HostFormModal({
-  host,
-  onClose,
-}: {
-  host?: RemoteHost;
-  onClose: () => void;
-}) {
+function HostFormModal({ host, onClose }: { host?: RemoteHost; onClose: () => void }) {
   const createMut = useCreateRemoteHost();
   const updateMut = useUpdateRemoteHost();
   const isEditing = !!host;
@@ -73,7 +67,9 @@ function HostFormModal({
       host: form.host.trim(),
       port: form.port,
       username: form.username.trim(),
-      ...(form.privateKeyPath.trim() ? { privateKeyPath: form.privateKeyPath.trim() } : {}),
+      ...(form.privateKeyPath.trim()
+        ? { privateKeyPath: form.privateKeyPath.trim() }
+        : {}),
     };
 
     if (isEditing) {
@@ -88,7 +84,10 @@ function HostFormModal({
   const mutError = createMut.error || updateMut.error;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
       <div
         className="bg-surface-raised border border-border-subtle rounded-lg w-full max-w-md mx-4 shadow-xl"
         onClick={(e) => e.stopPropagation()}
@@ -97,7 +96,10 @@ function HostFormModal({
           <h2 className="text-sm font-medium text-text-primary">
             {isEditing ? 'Edit Host' : 'Add Host'}
           </h2>
-          <button onClick={onClose} className="text-text-tertiary hover:text-text-primary">
+          <button
+            onClick={onClose}
+            className="text-text-tertiary hover:text-text-primary"
+          >
             <X size={16} />
           </button>
         </div>
@@ -155,9 +157,7 @@ function HostFormModal({
             />
           </Field>
 
-          {mutError && (
-            <p className="text-xs text-error">{mutError.message}</p>
-          )}
+          {mutError && <p className="text-xs text-error">{mutError.message}</p>}
 
           <div className="flex justify-end gap-2 pt-2">
             <button
@@ -222,15 +222,19 @@ function DeleteConfirmModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      onClick={onClose}
+    >
       <div
         className="bg-surface-raised border border-border-subtle rounded-lg w-full max-w-sm mx-4 shadow-xl p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-sm font-medium text-text-primary mb-2">Delete Host</h2>
         <p className="text-sm text-text-secondary mb-4">
-          Are you sure you want to delete <strong className="text-text-primary">{host.name}</strong>?
-          This cannot be undone.
+          Are you sure you want to delete{' '}
+          <strong className="text-text-primary">{host.name}</strong>? This cannot be
+          undone.
         </p>
         {deleteMut.error && (
           <p className="text-xs text-error mb-3">{deleteMut.error.message}</p>
@@ -291,7 +295,9 @@ function TestResultBanner({
         <p>{result.message}</p>
         {needsAcceptance && result.fingerprint && (
           <div className="mt-2">
-            <p className="text-xs font-mono break-all text-text-secondary">{result.fingerprint}</p>
+            <p className="text-xs font-mono break-all text-text-secondary">
+              {result.fingerprint}
+            </p>
             <button
               onClick={onAccept}
               disabled={isAccepting}
@@ -339,7 +345,9 @@ function HostCard({
             <Server size={16} className="text-text-tertiary" />
           </div>
           <div className="min-w-0">
-            <h3 className="text-sm font-medium text-text-primary truncate">{host.name}</h3>
+            <h3 className="text-sm font-medium text-text-primary truncate">
+              {host.name}
+            </h3>
             <p className="text-xs text-text-secondary truncate">
               {host.username}@{host.host}:{host.port}
             </p>
@@ -469,18 +477,10 @@ export function HostsPage() {
         </div>
       )}
 
-      {showForm && (
-        <HostFormModal
-          host={editHost}
-          onClose={() => setShowForm(false)}
-        />
-      )}
+      {showForm && <HostFormModal host={editHost} onClose={() => setShowForm(false)} />}
 
       {deleteHost && (
-        <DeleteConfirmModal
-          host={deleteHost}
-          onClose={() => setDeleteHost(undefined)}
-        />
+        <DeleteConfirmModal host={deleteHost} onClose={() => setDeleteHost(undefined)} />
       )}
     </div>
   );

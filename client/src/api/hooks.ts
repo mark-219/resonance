@@ -256,7 +256,11 @@ export function useCreateRemoteHost() {
       port?: number;
       username: string;
       privateKeyPath?: string;
-    }) => apiFetch<RemoteHost>('/remote-hosts', { method: 'POST', body: JSON.stringify(body) }),
+    }) =>
+      apiFetch<RemoteHost>('/remote-hosts', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['remoteHosts'] });
       qc.invalidateQueries({ queryKey: ['stats'] });
@@ -267,14 +271,21 @@ export function useCreateRemoteHost() {
 export function useUpdateRemoteHost() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, ...body }: {
+    mutationFn: ({
+      id,
+      ...body
+    }: {
       id: string;
       name?: string;
       host?: string;
       port?: number;
       username?: string;
       privateKeyPath?: string;
-    }) => apiFetch<RemoteHost>(`/remote-hosts/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
+    }) =>
+      apiFetch<RemoteHost>(`/remote-hosts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['remoteHosts'] });
     },
@@ -296,7 +307,13 @@ export function useDeleteRemoteHost() {
 export function useTestConnection() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, acceptFingerprint = false }: { id: string; acceptFingerprint?: boolean }) =>
+    mutationFn: ({
+      id,
+      acceptFingerprint = false,
+    }: {
+      id: string;
+      acceptFingerprint?: boolean;
+    }) =>
       apiFetch<TestConnectionResult>(`/remote-hosts/${id}/test`, {
         method: 'POST',
         body: JSON.stringify({ acceptFingerprint }),
