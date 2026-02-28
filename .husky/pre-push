@@ -1,0 +1,2 @@
+npx tsc -p server/tsconfig.json --noEmit
+npx tsc -p client/tsconfig.json --noEmit
