@@ -58,7 +58,16 @@ async function getRemoteHostHandler(
   const { id } = request.params as { id: string };
 
   const [host] = await db
-    .select()
+    .select({
+      id: remoteHosts.id,
+      name: remoteHosts.name,
+      host: remoteHosts.host,
+      port: remoteHosts.port,
+      username: remoteHosts.username,
+      hostFingerprint: remoteHosts.hostFingerprint,
+      createdAt: remoteHosts.createdAt,
+      updatedAt: remoteHosts.updatedAt,
+    })
     .from(remoteHosts)
     .where(eq(remoteHosts.id, id))
     .limit(1);
