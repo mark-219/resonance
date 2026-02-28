@@ -8,6 +8,7 @@ import {
   Bookmark,
   Settings,
   HardDrive,
+  Users,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ import { useState } from 'react';
 const navItems = [
   { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/library', icon: Library, label: 'Library' },
+  { to: '/artists', icon: Users, label: 'Artists' },
   { to: '/browse', icon: FolderOpen, label: 'Browse' },
   { to: '/playlists', icon: ListMusic, label: 'Playlists' },
   { to: '/collections', icon: Bookmark, label: 'Collections' },

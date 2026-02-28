@@ -51,7 +51,7 @@ export function Login() {
             onClick={handleOIDCLogin}
             className="w-full py-2.5 px-4 rounded bg-accent hover:bg-accent-hover text-text-inverse text-sm font-medium transition-colors"
           >
-            Sign in with Authentik
+            Sign in with SSO
           </button>
 
           {/* Divider */}

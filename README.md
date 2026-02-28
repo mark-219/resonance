@@ -4,19 +4,12 @@ Self-hosted music library manager for seedbox workflows. Browse, stream, and org
 
 ## Features
 
-- **OIDC Authentication** — Integrates with Authentik (or any OIDC provider), with local auth fallback
+- **OIDC Authentication** — Any OpenID Connect provider, with local auth fallback
 - **Remote File Browsing** — SFTP-based directory listing with SSH key management and TOFU fingerprint verification
-- **Audio Streaming** — Stream music directly from your seedbox via SFTP proxy with range request support
-- **Format-Aware Quality Display** — Detailed format badges (FLAC 24-bit, V0, V2, 320, etc.) with quality tier indicators
+- **Audio Streaming** — Stream from your seedbox via SFTP proxy with range request support
+- **Format-Aware Quality Display** — Format badges (FLAC 24-bit, V0, V2, 320, etc.) with quality tier indicators
 - **Virtual Playlists & Collections** — Organize music without altering files or directory structures
-- **Seed-Only Flagging** — Mark albums you're seeding but not listening to
 - **Read-Only Seedbox Policy** — Never writes, moves, or deletes files on remote hosts
-
-## Tech Stack
-
-**Backend:** Fastify 5 · Drizzle ORM · PostgreSQL 16 · BullMQ + Redis · SSH2/SFTP
-**Frontend:** React 18 · Vite · Tailwind CSS · Zustand · TanStack Query
-**Infrastructure:** Docker Compose · Nginx · Multi-stage builds
 
 ## Quick Start
 
@@ -46,8 +39,8 @@ npm run dev
 
 ## Environment Variables
 
-See [`.env.example`](.env.example) for all configuration options including OIDC, database, and SSH key paths.
+See [`.env.example`](.env.example) for configuration options including OIDC, database, and SSH key paths.
 
 ## License
 
-MIT
+[MIT](LICENSE)

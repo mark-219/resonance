@@ -51,6 +51,11 @@ coverage/
 .runner/
 _work/
 
+# Claude Code
+.claude/
+CLAUDE.md
+.planning/
+
 # Misc
 *.tgz
 *.tar.gz
