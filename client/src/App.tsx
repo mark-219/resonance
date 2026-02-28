@@ -5,6 +5,9 @@ import { Shell } from '@/components/layout/Shell';
 import { Login } from '@/pages/Login';
 import { Dashboard } from '@/pages/Dashboard';
 import { LibraryPage } from '@/pages/LibraryPage';
+import { AlbumDetailPage } from '@/pages/AlbumDetailPage';
+import { ArtistsPage } from '@/pages/ArtistsPage';
+import { ArtistDetailPage } from '@/pages/ArtistDetailPage';
 import { BrowsePage } from '@/pages/BrowsePage';
 import { SettingsPage } from '@/pages/SettingsPage';
 
@@ -45,6 +48,9 @@ export function App() {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/library" element={<LibraryPage />} />
+        <Route path="/albums/:id" element={<AlbumDetailPage />} />
+        <Route path="/artists" element={<ArtistsPage />} />
+        <Route path="/artists/:id" element={<ArtistDetailPage />} />
         <Route path="/browse" element={<BrowsePage />} />
         <Route
           path="/playlists"

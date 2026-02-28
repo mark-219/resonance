@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { eq, and, desc, inArray } from 'drizzle-orm';
+import { eq, and, desc, sql, count as countFn } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { albums, tracks, artists } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -13,6 +13,7 @@ const listAlbumsSchema = z.object({
   libraryId: z.string().uuid().optional(),
   artistId: z.string().uuid().optional(),
   format: z.string().optional(),
+  search: z.string().max(255).optional(),
   seedOnly: z
     .string()
     .transform((v) => v === 'true')
@@ -36,7 +37,7 @@ async function listAlbumsHandler(
       .send({ error: 'Invalid query parameters', issues: query.error.issues });
   }
 
-  const { limit, offset, libraryId, artistId, format, seedOnly } = query.data;
+  const { limit, offset, libraryId, artistId, format, seedOnly, search } = query.data;
 
   // Build where conditions
   const conditions = [];
@@ -53,25 +54,45 @@ async function listAlbumsHandler(
     conditions.push(eq(albums.seedOnly, seedOnly));
   }
 
-  // Filter by format if provided
-  let query_builder = db.select().from(albums);
-
-  if (conditions.length > 0) {
-    query_builder = query_builder.where(and(...conditions)) as any;
+  if (search) {
+    conditions.push(
+      sql`(${albums.title} ILIKE ${'%' + search + '%'} OR ${artists.name} ILIKE ${'%' + search + '%'})`
+    );
   }
 
-  // Get total count
-  let countQuery = db.select({ count: albums.id }).from(albums);
-  if (conditions.length > 0) {
-    countQuery = countQuery.where(and(...conditions)) as any;
-  }
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const [data, countResult] = await Promise.all([
-    query_builder.orderBy(desc(albums.createdAt)).limit(limit).offset(offset),
-    countQuery.execute(),
+    db
+      .select({
+        id: albums.id,
+        libraryId: albums.libraryId,
+        artistId: albums.artistId,
+        title: albums.title,
+        year: albums.year,
+        formats: albums.formats,
+        bestFormat: albums.bestFormat,
+        seedOnly: albums.seedOnly,
+        coverArtPath: albums.coverArtPath,
+        metadata: albums.metadata,
+        createdAt: albums.createdAt,
+        updatedAt: albums.updatedAt,
+        artistName: artists.name,
+      })
+      .from(albums)
+      .leftJoin(artists, eq(albums.artistId, artists.id))
+      .where(whereClause)
+      .orderBy(desc(albums.updatedAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ total: countFn() })
+      .from(albums)
+      .leftJoin(artists, eq(albums.artistId, artists.id))
+      .where(whereClause),
   ]);
 
-  // Filter by format in memory if specified (since JSON array doesn't have direct SQL filter)
+  // Filter by format in memory if specified (JSONB array)
   let filtered = data;
   if (format) {
     filtered = data.filter((album) => album.formats?.includes(format));
@@ -82,7 +103,7 @@ async function listAlbumsHandler(
     pagination: {
       limit,
       offset,
-      total: countResult.length,
+      total: Number(countResult[0]?.total ?? 0),
     },
   });
 }

@@ -4,6 +4,7 @@ import { eq, desc, and } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { libraries, scanJobs } from '../db/schema.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
+import { enqueueScan } from '../services/scanQueue.js';
 
 // ─── Schemas ──────────────────────────────────────────────────────────
 
@@ -168,6 +169,14 @@ async function scanLibraryHandler(
     return reply.status(404).send({ error: 'Library not found' });
   }
 
+  // Determine the scan path
+  const libraryPath = library.localPath || library.remotePath;
+  if (!libraryPath) {
+    return reply.status(400).send({
+      error: 'Library has no configured path (localPath or remotePath)',
+    });
+  }
+
   // Create a new scan job
   const [scanJob] = await db
     .insert(scanJobs)
@@ -178,8 +187,14 @@ async function scanLibraryHandler(
     })
     .returning();
 
-  // TODO: Trigger the actual scan job via BullMQ or similar job queue
-  // For now, this just creates a record in the database
+  // Enqueue the scan job for async processing
+  await enqueueScan({
+    jobId: scanJob.id,
+    libraryId: id,
+    userId: request.user!.id,
+    libraryPath,
+    isRemote: !!library.remoteHostId,
+  });
 
   return reply.status(201).send({
     jobId: scanJob.id,

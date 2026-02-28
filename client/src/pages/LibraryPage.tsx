@@ -1,54 +1,41 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '@/api/client';
+import { useNavigate } from 'react-router-dom';
+import { useAlbums, type Album } from '@/api/hooks';
 import { FormatBadge } from '@/components/music/FormatBadge';
-import { Search, Filter, Grid3X3, List, Music } from 'lucide-react';
+import { Search, Grid3X3, List, Music } from 'lucide-react';
 import { cn } from '@/lib/cn';
-
-interface Album {
-  id: string;
-  title: string;
-  artist?: { name: string };
-  year?: number;
-  bestFormat?: string;
-  seedOnly: boolean;
-  formats: string[];
-  coverArtPath?: string;
-}
 
 type ViewMode = 'grid' | 'list';
 
 export function LibraryPage() {
+  const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [search, setSearch] = useState('');
   const [formatFilter, setFormatFilter] = useState<string>('all');
   const [showSeedOnly, setShowSeedOnly] = useState(false);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['albums', search, formatFilter, showSeedOnly],
-    queryFn: () => {
-      const params = new URLSearchParams();
-      if (search) params.set('search', search);
-      if (formatFilter !== 'all') params.set('format', formatFilter);
-      if (showSeedOnly) params.set('seedOnly', 'true');
-      return apiFetch<{ albums: Album[]; total: number }>(`/albums?${params.toString()}`);
-    },
+  const { data, isLoading } = useAlbums({
+    search: search || undefined,
+    format: formatFilter !== 'all' ? formatFilter : undefined,
+    seedOnly: showSeedOnly || undefined,
   });
 
-  const albums = data?.albums ?? [];
+  const albums = data?.data ?? [];
+  const total = data?.pagination.total ?? 0;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-text-primary">Library</h1>
-          <p className="text-sm text-text-secondary mt-0.5">{data?.total ?? 0} albums</p>
+          <p className="text-sm text-text-secondary mt-0.5">
+            {total.toLocaleString()} albums
+          </p>
         </div>
       </div>
 
       {/* Toolbar */}
       <div className="flex items-center gap-3">
-        {/* Search */}
         <div className="relative flex-1 max-w-sm">
           <Search
             size={15}
@@ -63,7 +50,6 @@ export function LibraryPage() {
           />
         </div>
 
-        {/* Format filter */}
         <select
           value={formatFilter}
           onChange={(e) => setFormatFilter(e.target.value)}
@@ -72,12 +58,15 @@ export function LibraryPage() {
           <option value="all">All Formats</option>
           <option value="FLAC_24">FLAC 24-bit</option>
           <option value="FLAC">FLAC</option>
+          <option value="ALAC">ALAC</option>
           <option value="MP3_V0">V0</option>
           <option value="MP3_320">320</option>
           <option value="MP3_V2">V2</option>
+          <option value="AAC_256">AAC 256</option>
+          <option value="OPUS">Opus</option>
+          <option value="OGG">OGG</option>
         </select>
 
-        {/* Seed-only toggle */}
         <button
           onClick={() => setShowSeedOnly(!showSeedOnly)}
           className={cn(
@@ -90,7 +79,6 @@ export function LibraryPage() {
           Seed Only
         </button>
 
-        {/* View toggle */}
         <div className="flex items-center border border-border rounded overflow-hidden">
           <button
             onClick={() => setViewMode('grid')}
@@ -133,13 +121,21 @@ export function LibraryPage() {
       ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
           {albums.map((album) => (
-            <AlbumCard key={album.id} album={album} />
+            <AlbumCard
+              key={album.id}
+              album={album}
+              onClick={() => navigate(`/albums/${album.id}`)}
+            />
           ))}
         </div>
       ) : (
         <div className="space-y-1">
           {albums.map((album) => (
-            <AlbumRow key={album.id} album={album} />
+            <AlbumRow
+              key={album.id}
+              album={album}
+              onClick={() => navigate(`/albums/${album.id}`)}
+            />
           ))}
         </div>
       )}
@@ -147,16 +143,16 @@ export function LibraryPage() {
   );
 }
 
-function AlbumCard({ album }: { album: Album }) {
+function AlbumCard({ album, onClick }: { album: Album; onClick: () => void }) {
   return (
-    <div className="group cursor-pointer">
+    <div className="group cursor-pointer" onClick={onClick}>
       <div className="aspect-square rounded bg-surface-overlay border border-border-subtle flex items-center justify-center mb-2 overflow-hidden group-hover:border-border-strong transition-colors">
         <Music size={32} className="text-text-tertiary" />
       </div>
       <p className="text-sm font-medium text-text-primary truncate">{album.title}</p>
       <p className="text-xs text-text-secondary truncate">
-        {album.artist?.name ?? 'Unknown Artist'}
-        {album.year && ` · ${album.year}`}
+        {album.artistName ?? 'Unknown Artist'}
+        {album.year && ` \u00b7 ${album.year}`}
       </p>
       <div className="flex items-center gap-1 mt-1">
         {album.bestFormat && <FormatBadge format={album.bestFormat} />}
@@ -170,21 +166,24 @@ function AlbumCard({ album }: { album: Album }) {
   );
 }
 
-function AlbumRow({ album }: { album: Album }) {
+function AlbumRow({ album, onClick }: { album: Album; onClick: () => void }) {
   return (
-    <div className="flex items-center gap-4 px-3 py-2.5 rounded hover:bg-surface-raised transition-colors cursor-pointer">
+    <div
+      className="flex items-center gap-4 px-3 py-2.5 rounded hover:bg-surface-raised transition-colors cursor-pointer"
+      onClick={onClick}
+    >
       <div className="w-10 h-10 rounded bg-surface-overlay flex items-center justify-center shrink-0">
         <Music size={16} className="text-text-tertiary" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-text-primary truncate">{album.title}</p>
         <p className="text-xs text-text-secondary truncate">
-          {album.artist?.name ?? 'Unknown Artist'}
+          {album.artistName ?? 'Unknown Artist'}
         </p>
       </div>
       <span className="text-xs text-text-tertiary">{album.year}</span>
       <div className="flex items-center gap-1.5">
-        {album.formats.map((f) => (
+        {album.formats?.map((f) => (
           <FormatBadge key={f} format={f} />
         ))}
       </div>
