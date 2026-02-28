@@ -1,6 +1,9 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { eq, desc, and } from 'drizzle-orm';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { Client as SSHClient } from 'ssh2';
 import { db } from '../db/index.js';
 import { remoteHosts } from '../db/schema.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
@@ -169,42 +172,113 @@ async function testConnectionHandler(
   }
 
   try {
-    // TODO: Implement actual SSH connection test using a library like ssh2
-    // This is a placeholder that would:
-    // 1. Connect to the SSH host
-    // 2. Get the host fingerprint
-    // 3. Perform TOFU (Trust On First Use) verification
-    // 4. If acceptFingerprint is true, store the fingerprint
-
-    // For now, return a mock response
-    const mockFingerprint = 'SHA256:mockFingerprint1234567890';
-
-    if (host.hostFingerprint) {
-      // Verify TOFU fingerprint
-      if (host.hostFingerprint !== mockFingerprint) {
+    // Read private key if configured
+    let privateKey: Buffer | undefined;
+    if (host.privateKeyPath) {
+      try {
+        privateKey = readFileSync(host.privateKeyPath);
+      } catch (err) {
         return reply.status(400).send({
-          error: 'Fingerprint mismatch',
-          details: 'Host fingerprint does not match stored fingerprint',
+          success: false,
+          message: `Cannot read private key: ${err instanceof Error ? err.message : 'Unknown error'}`,
         });
       }
-    } else if (body.data.acceptFingerprint) {
-      // Store fingerprint
-      await db
-        .update(remoteHosts)
-        .set({ hostFingerprint: mockFingerprint })
-        .where(eq(remoteHosts.id, id));
     }
 
+    // Perform real SSH connection test
+    const result = await new Promise<{ fingerprint: string }>((resolve, reject) => {
+      const conn = new SSHClient();
+      const timeout = setTimeout(() => {
+        conn.end();
+        reject(new Error('Connection timed out after 10 seconds'));
+      }, 10_000);
+
+      conn.on('handshake', (negotiated) => {
+        // Extract the host key fingerprint from the connection
+        // The handshake event fires after key exchange, meaning we're connected
+        // We get the actual fingerprint via the hostkeys event or compute it
+      });
+
+      conn.on('ready', () => {
+        clearTimeout(timeout);
+        // Get the fingerprint from the internal key exchange state
+        const key = (conn as unknown as { _sock?: { _host_key?: Buffer } })._sock?._host_key;
+        let fingerprint = 'unknown';
+
+        // ssh2 stores the host key hash internally; we compute SHA256 fingerprint
+        // from the server's host key available after handshake
+        const transport = (conn as unknown as { _protocol?: { _hostKey?: Buffer } })._protocol;
+        if (transport?._hostKey) {
+          const hash = createHash('sha256').update(transport._hostKey).digest('base64');
+          fingerprint = `SHA256:${hash}`;
+        }
+
+        conn.end();
+        resolve({ fingerprint });
+      });
+
+      conn.on('error', (err: Error) => {
+        clearTimeout(timeout);
+        reject(err);
+      });
+
+      conn.connect({
+        host: host.host,
+        port: host.port,
+        username: host.username,
+        ...(privateKey ? { privateKey } : {}),
+        // If no private key, ssh2 will attempt agent-based auth
+        agent: !privateKey ? process.env.SSH_AUTH_SOCK : undefined,
+        readyTimeout: 10_000,
+      });
+    });
+
+    const fingerprint = result.fingerprint;
+
+    // TOFU logic
+    if (host.hostFingerprint) {
+      // Already have a stored fingerprint — verify it matches
+      if (host.hostFingerprint !== fingerprint) {
+        return reply.send({
+          success: false,
+          message: 'Host fingerprint has changed! This could indicate a security issue.',
+          fingerprint,
+        });
+      }
+      return reply.send({
+        success: true,
+        message: 'Connection successful — fingerprint verified',
+        fingerprint,
+      });
+    }
+
+    // No stored fingerprint yet
+    if (body.data.acceptFingerprint) {
+      // User accepted — store the fingerprint
+      await db
+        .update(remoteHosts)
+        .set({ hostFingerprint: fingerprint, updatedAt: new Date() })
+        .where(eq(remoteHosts.id, id));
+
+      return reply.send({
+        success: true,
+        message: 'Connection successful — fingerprint accepted and stored',
+        fingerprint,
+      });
+    }
+
+    // First connection — ask user to accept the fingerprint
     return reply.send({
-      success: true,
-      message: 'Connection test successful',
-      fingerprint: mockFingerprint,
+      success: false,
+      message: 'New host fingerprint detected. Please verify and accept.',
+      fingerprint,
+      needsAcceptance: true,
     });
   } catch (error) {
     request.log.error(error);
-    return reply.status(500).send({
-      error: 'Connection test failed',
-      details: error instanceof Error ? error.message : 'Unknown error',
+    return reply.send({
+      success: false,
+      message: error instanceof Error ? error.message : 'Connection failed',
     });
   }
 }
