@@ -342,7 +342,12 @@ async function reorderTracksHandler(
       db
         .update(playlistTracks)
         .set({ position: item.position })
-        .where(and(eq(playlistTracks.id, item.playlistTrackId), eq(playlistTracks.playlistId, id)))
+        .where(
+          and(
+            eq(playlistTracks.id, item.playlistTrackId),
+            eq(playlistTracks.playlistId, id)
+          )
+        )
         .execute()
     )
   );
