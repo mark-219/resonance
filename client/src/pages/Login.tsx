@@ -22,7 +22,11 @@ export function Login() {
         body: JSON.stringify({ username, password }),
       });
       await fetchUser();
-      navigate('/');
+      if (useAuthStore.getState().isAuthenticated) {
+        navigate('/');
+      } else {
+        setError('Login failed. Please try again.');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
