@@ -5,24 +5,59 @@ on:
     branches: [main]
   workflow_dispatch:
 
-# Prevent concurrent deploys
+permissions:
+  contents: read
+
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
 jobs:
+  ci-gate:
+    name: Pre-deploy checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: |
+          npx tsc -p server/tsconfig.json --noEmit
+          npx tsc -p client/tsconfig.json --noEmit
+
+      - name: Verify Docker builds
+        run: |
+          docker build -t resonance-server:gate ./server
+          docker build -t resonance-client:gate ./client
+
   deploy:
     name: Deploy to apps
-    runs-on: self-hosted
+    needs: ci-gate
+    runs-on: [self-hosted, linux, resonance]
     environment: production
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Verify commit is on main
+        run: |
+          git fetch origin main --depth=1
+          if ! git merge-base --is-ancestor "${{ github.sha }}" "origin/main" 2>/dev/null; then
+            echo "::error::Commit is not on main. Aborting."
+            exit 1
+          fi
 
       - name: Validate environment
         run: |
           if [ ! -f "${{ vars.DEPLOY_PATH }}/.env" ]; then
-            echo "::error::.env file not found at ${{ vars.DEPLOY_PATH }}/.env"
-            echo "Run the initial setup script first: ./scripts/setup-server.sh"
+            echo "::error::.env not found at ${{ vars.DEPLOY_PATH }}"
             exit 1
           fi
 
@@ -38,19 +73,23 @@ jobs:
           docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
           docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
-      - name: Wait for healthy
+      - name: Run database migrations
         working-directory: ${{ vars.DEPLOY_PATH }}
         run: |
-          echo "Waiting for services to be healthy..."
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T server \
+            node dist/db/migrate.js || true
+
+      - name: Health check
+        working-directory: ${{ vars.DEPLOY_PATH }}
+        run: |
           for i in $(seq 1 30); do
             if curl -sf http://localhost:3001/api/health > /dev/null 2>&1; then
-              echo "Server is healthy!"
+              echo "Healthy"
               exit 0
             fi
-            echo "  Attempt $i/30 — waiting 2s..."
             sleep 2
           done
-          echo "::error::Server failed health check after 60s"
+          echo "::error::Health check failed"
           docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=50 server
           exit 1
 
