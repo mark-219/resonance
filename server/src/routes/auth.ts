@@ -73,7 +73,7 @@ async function createSession(userId: string, reply: FastifyReply): Promise<strin
 
   reply.setCookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: config.NODE_ENV === 'production',
+    secure: config.SECURE_COOKIES,
     sameSite: 'lax',
     path: '/',
     maxAge: SESSION_EXPIRY_DAYS * 24 * 60 * 60,
@@ -155,7 +155,7 @@ async function oidcLoginHandler(
   // Store state in session/cookie for verification
   reply.setCookie('oidc_state', state, {
     httpOnly: true,
-    secure: config.NODE_ENV === 'production',
+    secure: config.SECURE_COOKIES,
     sameSite: 'lax',
     maxAge: 600, // 10 minutes
   });

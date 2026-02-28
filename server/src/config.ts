@@ -35,6 +35,12 @@ const envSchema = z.object({
     .transform((v) => v === 'true')
     .default('true'),
 
+  // Cookies
+  SECURE_COOKIES: z
+    .string()
+    .transform((v) => v === 'true')
+    .default('false'),
+
   // CORS
   CORS_ORIGIN: z.string().default('http://localhost:3100'),
 
