@@ -23,7 +23,7 @@ const envSchema = z.object({
   // Session / JWT (fallback local auth)
   SESSION_SECRET: z.string().min(32),
 
-  // OIDC (Authentik) — all optional; leave blank to use local auth only
+  // OIDC — all optional; leave blank to use local auth only
   OIDC_ISSUER: optionalUrl,
   OIDC_CLIENT_ID: emptyToUndefined,
   OIDC_CLIENT_SECRET: emptyToUndefined,
