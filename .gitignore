@@ -13,6 +13,7 @@ build/
 .env.local
 .env.*.local
 !.env.example
+.npmrc
 
 # SSH keys — NEVER commit these
 *.pem
