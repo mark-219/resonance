@@ -68,9 +68,7 @@ export const users = pgTable(
     createdAt: timestamp('created_at').notNull().defaultNow(),
     updatedAt: timestamp('updated_at').notNull().defaultNow(),
   },
-  (table) => [
-    uniqueIndex('idx_users_oidc').on(table.oidcSubject, table.oidcIssuer),
-  ]
+  (table) => [uniqueIndex('idx_users_oidc').on(table.oidcSubject, table.oidcIssuer)]
 );
 
 // ─── Sessions ────────────────────────────────────────────────────────

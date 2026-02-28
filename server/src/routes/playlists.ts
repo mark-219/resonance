@@ -48,7 +48,9 @@ async function listPlaylistsHandler(
 ): Promise<void> {
   const query = paginationSchema.safeParse(request.query);
   if (!query.success) {
-    return reply.status(400).send({ error: 'Invalid query parameters', issues: query.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid query parameters', issues: query.error.issues });
   }
 
   const { limit, offset } = query.data;
@@ -127,7 +129,9 @@ async function createPlaylistHandler(
 ): Promise<void> {
   const body = createPlaylistSchema.safeParse(request.body);
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   const [playlist] = await db
@@ -149,7 +153,9 @@ async function updatePlaylistHandler(
   const body = updatePlaylistSchema.safeParse(request.body);
 
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   // Verify ownership
@@ -213,7 +219,9 @@ async function addTrackHandler(
   const body = addTrackSchema.safeParse(request.body);
 
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   // Verify ownership
@@ -290,9 +298,7 @@ async function removeTrackHandler(
 
   const result = await db
     .delete(playlistTracks)
-    .where(
-      and(eq(playlistTracks.playlistId, id), eq(playlistTracks.trackId, trackId))
-    )
+    .where(and(eq(playlistTracks.playlistId, id), eq(playlistTracks.trackId, trackId)))
     .returning();
 
   if (result.length === 0) {
@@ -310,7 +316,9 @@ async function reorderTracksHandler(
   const body = reorderTracksSchema.safeParse(request.body);
 
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   // Verify ownership

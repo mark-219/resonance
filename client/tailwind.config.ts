@@ -8,9 +8,9 @@ export default {
         // ─── Dark matte palette ─────────────────────────────
         surface: {
           DEFAULT: '#1a1a1e', // Main background
-          raised: '#222226',  // Cards, panels
+          raised: '#222226', // Cards, panels
           overlay: '#2a2a2f', // Modals, dropdowns
-          sunken: '#141416',  // Inset areas
+          sunken: '#141416', // Inset areas
         },
         border: {
           DEFAULT: '#2e2e33',
@@ -38,20 +38,14 @@ export default {
         info: '#5588aa',
         // ─── Format quality colors ──────────────────────────
         quality: {
-          lossless: '#4a9e6e',    // Green — FLAC, ALAC, WAV
-          high: '#5588aa',        // Blue — V0, 320
-          mid: '#c8a033',         // Amber — V2, 256
-          low: '#9a9894',         // Gray — 192, 128
+          lossless: '#4a9e6e', // Green — FLAC, ALAC, WAV
+          high: '#5588aa', // Blue — V0, 320
+          mid: '#c8a033', // Amber — V2, 256
+          low: '#9a9894', // Gray — 192, 128
         },
       },
       fontFamily: {
-        sans: [
-          'Inter',
-          '-apple-system',
-          'BlinkMacSystemFont',
-          'Segoe UI',
-          'sans-serif',
-        ],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
         mono: ['JetBrains Mono', 'Fira Code', 'monospace'],
       },
       fontSize: {

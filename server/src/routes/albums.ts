@@ -13,7 +13,10 @@ const listAlbumsSchema = z.object({
   libraryId: z.string().uuid().optional(),
   artistId: z.string().uuid().optional(),
   format: z.string().optional(),
-  seedOnly: z.string().transform((v) => v === 'true').optional(),
+  seedOnly: z
+    .string()
+    .transform((v) => v === 'true')
+    .optional(),
 });
 
 const updateAlbumSchema = z.object({
@@ -28,7 +31,9 @@ async function listAlbumsHandler(
 ): Promise<void> {
   const query = listAlbumsSchema.safeParse(request.query);
   if (!query.success) {
-    return reply.status(400).send({ error: 'Invalid query parameters', issues: query.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid query parameters', issues: query.error.issues });
   }
 
   const { limit, offset, libraryId, artistId, format, seedOnly } = query.data;
@@ -145,7 +150,9 @@ async function updateAlbumHandler(
   const body = updateAlbumSchema.safeParse(request.body);
 
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   // Only allow non-empty updates

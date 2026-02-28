@@ -24,7 +24,9 @@ async function listTracksHandler(
 ): Promise<void> {
   const query = listTracksSchema.safeParse(request.query);
   if (!query.success) {
-    return reply.status(400).send({ error: 'Invalid query parameters', issues: query.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid query parameters', issues: query.error.issues });
   }
 
   const { limit, offset, albumId, artistId, format, libraryId } = query.data;

@@ -47,9 +47,7 @@ export function SettingsPage() {
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-text-primary">Sign out</p>
-            <p className="text-xs text-text-tertiary">
-              End your current session
-            </p>
+            <p className="text-xs text-text-tertiary">End your current session</p>
           </div>
           <button
             onClick={logout}

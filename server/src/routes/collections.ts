@@ -37,7 +37,9 @@ async function listCollectionsHandler(
 ): Promise<void> {
   const query = paginationSchema.safeParse(request.query);
   if (!query.success) {
-    return reply.status(400).send({ error: 'Invalid query parameters', issues: query.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid query parameters', issues: query.error.issues });
   }
 
   const { limit, offset } = query.data;
@@ -121,7 +123,9 @@ async function createCollectionHandler(
 ): Promise<void> {
   const body = createCollectionSchema.safeParse(request.body);
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   const [collection] = await db
@@ -143,7 +147,9 @@ async function updateCollectionHandler(
   const body = updateCollectionSchema.safeParse(request.body);
 
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   // Verify ownership
@@ -207,12 +213,16 @@ async function addItemHandler(
   const body = addItemSchema.safeParse(request.body);
 
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   // Either albumId or trackId must be provided
   if (!body.data.albumId && !body.data.trackId) {
-    return reply.status(400).send({ error: 'Either albumId or trackId must be provided' });
+    return reply
+      .status(400)
+      .send({ error: 'Either albumId or trackId must be provided' });
   }
 
   // Verify ownership
@@ -290,9 +300,7 @@ async function removeItemHandler(
 
   const result = await db
     .delete(collectionItems)
-    .where(
-      and(eq(collectionItems.collectionId, id), eq(collectionItems.id, itemId))
-    )
+    .where(and(eq(collectionItems.collectionId, id), eq(collectionItems.id, itemId)))
     .returning();
 
   if (result.length === 0) {
