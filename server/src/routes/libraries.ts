@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { eq, desc, and } from 'drizzle-orm';
 import { db } from '../db/index.js';
-import { libraries, scanJobs } from '../db/schema.js';
+import { libraries, scanJobs, remoteHosts } from '../db/schema.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 import { enqueueScan } from '../services/scanQueue.js';
 
@@ -43,8 +43,20 @@ async function listLibrariesHandler(
 
   const [data, count] = await Promise.all([
     db
-      .select()
+      .select({
+        id: libraries.id,
+        name: libraries.name,
+        remoteHostId: libraries.remoteHostId,
+        remotePath: libraries.remotePath,
+        localPath: libraries.localPath,
+        lastScannedAt: libraries.lastScannedAt,
+        createdAt: libraries.createdAt,
+        updatedAt: libraries.updatedAt,
+        createdBy: libraries.createdBy,
+        remoteHostName: remoteHosts.name,
+      })
       .from(libraries)
+      .leftJoin(remoteHosts, eq(libraries.remoteHostId, remoteHosts.id))
       .orderBy(desc(libraries.createdAt))
       .limit(limit)
       .offset(offset),

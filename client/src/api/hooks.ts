@@ -87,6 +87,7 @@ export interface Library {
   lastScannedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  remoteHostName: string | null;
 }
 
 export interface Stats {
@@ -171,6 +172,40 @@ export function useScanLibrary() {
       ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['scanJobs'] });
+    },
+  });
+}
+
+export function useDeleteLibrary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ success: boolean }>(`/libraries/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['libraries'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useUpdateLibrary() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string;
+      name?: string;
+      remotePath?: string;
+      localPath?: string;
+    }) =>
+      apiFetch<Library>(`/libraries/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['libraries'] });
     },
   });
 }

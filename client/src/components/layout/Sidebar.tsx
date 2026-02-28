@@ -11,6 +11,7 @@ import {
   Users,
   ChevronLeft,
   ChevronRight,
+  Database,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -24,6 +25,7 @@ const navItems = [
 ] as const;
 
 const bottomItems = [
+  { to: '/libraries', icon: Database, label: 'Libraries' },
   { to: '/hosts', icon: HardDrive, label: 'Hosts' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ] as const;

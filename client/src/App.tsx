@@ -11,6 +11,7 @@ import { ArtistDetailPage } from '@/pages/ArtistDetailPage';
 import { BrowsePage } from '@/pages/BrowsePage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { HostsPage } from '@/pages/HostsPage';
+import { LibrariesPage } from '@/pages/LibrariesPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -72,6 +73,7 @@ export function App() {
           }
         />
         <Route path="/hosts" element={<HostsPage />} />
+        <Route path="/libraries" element={<LibrariesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
