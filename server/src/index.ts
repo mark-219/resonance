@@ -21,6 +21,7 @@ import { usersRoutes } from './routes/users.js';
 import { streamRoutes } from './routes/stream.js';
 import { eventsRoutes } from './routes/events.js';
 import { startScanWorker, closeScanQueue } from './services/scanQueue.js';
+import { sshConnectionManager } from './services/sshConnectionManager.js';
 
 const app = Fastify({
   trustProxy: true,
@@ -110,6 +111,7 @@ startScanWorker();
 async function shutdown() {
   app.log.info('Shutting down...');
   await closeScanQueue();
+  await sshConnectionManager.closeAll();
   await app.close();
   process.exit(0);
 }
