@@ -148,7 +148,14 @@ export async function runScan(ctx: ScanContext): Promise<void> {
   try {
     // Phase 1: Discover directories
     const albumDirs = await walkLocalLibrary(libraryPath, (dir) => {
-      emitScanProgress(userId, jobId, libraryId, 0, 0, `Discovering: ${path.basename(dir)}`);
+      emitScanProgress(
+        userId,
+        jobId,
+        libraryId,
+        0,
+        0,
+        `Discovering: ${path.basename(dir)}`
+      );
     });
 
     const totalFiles = countAudioFiles(albumDirs);
