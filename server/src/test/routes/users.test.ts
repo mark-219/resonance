@@ -2,7 +2,12 @@ import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildTestApp } from '../helpers/app.js';
 import { cleanDatabase } from '../helpers/db.js';
-import { createTestUser, createSessionCookie, loginAsAdmin, loginAsUser } from '../helpers/auth.js';
+import {
+  createTestUser,
+  createSessionCookie,
+  loginAsAdmin,
+  loginAsUser,
+} from '../helpers/auth.js';
 
 let app: FastifyInstance;
 
