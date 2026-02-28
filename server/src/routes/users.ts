@@ -54,10 +54,7 @@ const userColumns = {
 
 // ─── Route handlers ──────────────────────────────────────────────────
 
-async function setupHandler(
-  request: FastifyRequest,
-  reply: FastifyReply
-): Promise<void> {
+async function setupHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   const body = setupSchema.safeParse(request.body);
   if (!body.success) {
     return reply
@@ -72,7 +69,9 @@ async function setupHandler(
     .where(eq(users.role, 'admin'));
 
   if (Number(result.total) > 0) {
-    return reply.status(403).send({ error: 'Setup already completed. An admin user exists.' });
+    return reply
+      .status(403)
+      .send({ error: 'Setup already completed. An admin user exists.' });
   }
 
   const { username, password } = body.data;
