@@ -23,8 +23,6 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   });
 
   if (response.status === 401) {
-    // Redirect to login on auth failure
-    window.location.href = '/login';
     throw new ApiError(401, 'Authentication required');
   }
 
