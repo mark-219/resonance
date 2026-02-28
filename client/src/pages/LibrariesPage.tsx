@@ -41,9 +41,10 @@ function ScanStatusBanner({ libraryId }: { libraryId: string }) {
     },
     running: {
       icon: Loader2,
-      text: latestJob.progress != null && latestJob.totalItems != null
-        ? `Scanning... ${latestJob.progress}/${latestJob.totalItems}`
-        : 'Scanning...',
+      text:
+        latestJob.progress != null && latestJob.totalItems != null
+          ? `Scanning... ${latestJob.progress}/${latestJob.totalItems}`
+          : 'Scanning...',
       className: 'bg-accent/10 border-accent/20 text-accent',
     },
     completed: {
@@ -62,8 +63,16 @@ function ScanStatusBanner({ libraryId }: { libraryId: string }) {
   const Icon = config.icon;
 
   return (
-    <div className={cn('rounded-md border px-3 py-2 text-xs flex items-center gap-2', config.className)}>
-      <Icon size={14} className={cn('shrink-0', latestJob.status === 'running' && 'animate-spin')} />
+    <div
+      className={cn(
+        'rounded-md border px-3 py-2 text-xs flex items-center gap-2',
+        config.className
+      )}
+    >
+      <Icon
+        size={14}
+        className={cn('shrink-0', latestJob.status === 'running' && 'animate-spin')}
+      />
       <span>{config.text}</span>
       {latestJob.status === 'failed' && latestJob.logOutput && (
         <span className="text-text-tertiary truncate ml-1">— {latestJob.logOutput}</span>
@@ -311,7 +320,9 @@ function LibraryFormModal({
               <Field label="Remote Host" error={errors.remoteHostId}>
                 <select
                   value={form.remoteHostId}
-                  onChange={(e) => setForm((f) => ({ ...f, remoteHostId: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, remoteHostId: e.target.value }))
+                  }
                   className="w-full px-3 py-2 rounded bg-surface-raised border border-border text-sm text-text-primary focus:border-accent transition-colors"
                 >
                   <option value="">Select a host...</option>
@@ -407,8 +418,8 @@ function DeleteConfirmModal({
         <h2 className="text-sm font-medium text-text-primary mb-2">Delete Library</h2>
         <p className="text-sm text-text-secondary mb-4">
           Are you sure you want to delete{' '}
-          <strong className="text-text-primary">{library.name}</strong>? This will
-          remove all associated albums, tracks, and scan history. This cannot be undone.
+          <strong className="text-text-primary">{library.name}</strong>? This will remove
+          all associated albums, tracks, and scan history. This cannot be undone.
         </p>
         {deleteMut.error && (
           <p className="text-xs text-error mb-3">{deleteMut.error.message}</p>
