@@ -48,8 +48,12 @@ await app.register(cookie, {
 });
 
 await app.register(rateLimit, {
-  max: 100,
+  max: 300,
   timeWindow: '1 minute',
+  allowList: (req, _key) => {
+    // Auth check is called on every page navigation — exempt it from rate limiting
+    return req.url === '/api/auth/me' || req.url === '/api/health';
+  },
 });
 
 // ─── Routes ──────────────────────────────────────────────────────────
