@@ -22,10 +22,6 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     },
   });
 
-  if (response.status === 401) {
-    throw new ApiError(401, 'Authentication required');
-  }
-
   if (!response.ok) {
     const body = await response.json().catch(() => ({ error: 'Unknown error' }));
     throw new ApiError(response.status, body.error || response.statusText);
