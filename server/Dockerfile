@@ -11,7 +11,7 @@ WORKDIR /app
 COPY --from=builder /app/package.json ./
 RUN npm install --omit=dev
 COPY --from=builder /app/dist/ dist/
-COPY --from=builder /app/src/db/migrations/ src/db/migrations/
+COPY --from=builder /app/src/db/ src/db/
 USER node
 EXPOSE 3001
 CMD ["node", "dist/index.js"]
