@@ -7,6 +7,7 @@
  * Emits SSE progress events so the UI can show real-time scan status.
  */
 
+import path from 'path';
 import { eq, and } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { libraries, artists, albums, tracks, scanJobs } from '../db/schema.js';
@@ -134,12 +135,20 @@ export async function runScan(ctx: ScanContext): Promise<void> {
   // Mark job as running
   await db.update(scanJobs).set({ status: 'running' }).where(eq(scanJobs.id, jobId));
 
-  emitNotification(userId, 'Scan started', `Scanning library: ${libraryPath}`, 'info');
+  // Fetch library name for user-facing messages (avoid exposing filesystem paths)
+  const [library] = await db
+    .select({ name: libraries.name })
+    .from(libraries)
+    .where(eq(libraries.id, libraryId))
+    .limit(1);
+  const libraryName = library?.name ?? 'library';
+
+  emitNotification(userId, 'Scan started', `Scanning library: ${libraryName}`, 'info');
 
   try {
     // Phase 1: Discover directories
     const albumDirs = await walkLocalLibrary(libraryPath, (dir) => {
-      emitScanProgress(userId, jobId, libraryId, 0, 0, `Discovering: ${dir}`);
+      emitScanProgress(userId, jobId, libraryId, 0, 0, `Discovering: ${path.basename(dir)}`);
     });
 
     const totalFiles = countAudioFiles(albumDirs);

@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { requireAuth } from '../middleware/auth.js';
+import { config } from '../config.js';
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -83,7 +84,8 @@ async function eventsHandler(
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
     Connection: 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': config.CORS_ORIGIN,
+    'Access-Control-Allow-Credentials': 'true',
     'Access-Control-Allow-Headers':
       'Origin, X-Requested-With, Content-Type, Accept, Authorization',
   });

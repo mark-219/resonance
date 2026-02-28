@@ -14,6 +14,7 @@ build/
 .env.*.local
 !.env.example
 .npmrc
+cookies.txt
 
 # SSH keys — NEVER commit these
 *.pem
