@@ -23,6 +23,7 @@ import { eventsRoutes } from './routes/events.js';
 import { startScanWorker, closeScanQueue } from './services/scanQueue.js';
 
 const app = Fastify({
+  trustProxy: true,
   logger: {
     level: config.LOG_LEVEL,
     transport:
