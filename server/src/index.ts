@@ -17,6 +17,7 @@ import { tracksRoutes } from './routes/tracks.js';
 import { playlistsRoutes } from './routes/playlists.js';
 import { collectionsRoutes } from './routes/collections.js';
 import { remoteHostsRoutes } from './routes/remoteHosts.js';
+import { usersRoutes } from './routes/users.js';
 import { streamRoutes } from './routes/stream.js';
 import { eventsRoutes } from './routes/events.js';
 import { startScanWorker, closeScanQueue } from './services/scanQueue.js';
@@ -62,6 +63,7 @@ await app.register(tracksRoutes, { prefix: '/api/tracks' });
 await app.register(playlistsRoutes, { prefix: '/api/playlists' });
 await app.register(collectionsRoutes, { prefix: '/api/collections' });
 await app.register(remoteHostsRoutes, { prefix: '/api/remote-hosts' });
+await app.register(usersRoutes, { prefix: '/api/users' });
 await app.register(streamRoutes, { prefix: '/api/stream' });
 await app.register(eventsRoutes, { prefix: '/api/events' });
 
