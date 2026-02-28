@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { eq, and, desc, sql, count as countFn } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { albums, tracks, artists } from '../db/schema.js';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAuth, requireUser } from '../middleware/auth.js';
 
 // ─── Schemas ──────────────────────────────────────────────────────────
 
@@ -211,5 +211,5 @@ export async function albumsRoutes(app: FastifyInstance) {
   app.get('/:id', { preHandler: [requireAuth] }, getAlbumHandler);
 
   // Update album
-  app.patch('/:id', { preHandler: [requireAuth] }, updateAlbumHandler);
+  app.patch('/:id', { preHandler: [requireUser] }, updateAlbumHandler);
 }

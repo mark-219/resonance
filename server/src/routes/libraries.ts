@@ -269,7 +269,7 @@ export async function librariesRoutes(app: FastifyInstance) {
   app.delete('/:id', { preHandler: [requireAdmin] }, deleteLibraryHandler);
 
   // Trigger scan
-  app.post('/:id/scan', { preHandler: [requireAuth] }, scanLibraryHandler);
+  app.post('/:id/scan', { preHandler: [requireAdmin] }, scanLibraryHandler);
 
   // List scan jobs for library
   app.get('/:id/jobs', { preHandler: [requireAuth] }, listScanJobsHandler);
