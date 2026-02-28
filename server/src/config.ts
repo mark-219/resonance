@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import 'dotenv/config';
 
+// Transform empty strings to undefined so optional fields work with Docker env defaults
+const emptyToUndefined = z
+  .string()
+  .transform((v) => (v === '' ? undefined : v))
+  .optional();
+
+const optionalUrl = emptyToUndefined.pipe(z.string().url().optional());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().default(3001),
@@ -15,11 +23,11 @@ const envSchema = z.object({
   // Session / JWT (fallback local auth)
   SESSION_SECRET: z.string().min(32),
 
-  // OIDC (Authentik)
-  OIDC_ISSUER: z.string().url().optional(),
-  OIDC_CLIENT_ID: z.string().optional(),
-  OIDC_CLIENT_SECRET: z.string().optional(),
-  OIDC_REDIRECT_URI: z.string().url().optional(),
+  // OIDC (Authentik) — all optional; leave blank to use local auth only
+  OIDC_ISSUER: optionalUrl,
+  OIDC_CLIENT_ID: emptyToUndefined,
+  OIDC_CLIENT_SECRET: emptyToUndefined,
+  OIDC_REDIRECT_URI: optionalUrl,
 
   // Local auth fallback
   LOCAL_AUTH_ENABLED: z
