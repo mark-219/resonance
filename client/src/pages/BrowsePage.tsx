@@ -66,8 +66,7 @@ export function BrowsePage() {
     if (!bytes) return '—';
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024)
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   }
 
@@ -140,9 +139,7 @@ export function BrowsePage() {
           <span key={i} className="flex items-center gap-1">
             <ChevronRight size={12} className="text-text-tertiary" />
             <button
-              onClick={() =>
-                navigateTo('/' + pathParts.slice(0, i + 1).join('/'))
-              }
+              onClick={() => navigateTo('/' + pathParts.slice(0, i + 1).join('/'))}
               className={cn(
                 'transition-colors',
                 i === pathParts.length - 1

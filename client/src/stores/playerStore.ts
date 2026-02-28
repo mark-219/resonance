@@ -51,8 +51,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
   queue: [],
   queueIndex: -1,
 
-  play: (track) =>
-    set({ currentTrack: track, isPlaying: true, currentTime: 0 }),
+  play: (track) => set({ currentTrack: track, isPlaying: true, currentTime: 0 }),
 
   pause: () => set({ isPlaying: false }),
 
@@ -104,8 +103,7 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
       currentTime: 0,
     }),
 
-  addToQueue: (track) =>
-    set((s) => ({ queue: [...s.queue, track] })),
+  addToQueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
 
   updateTime: (time) => set({ currentTime: time }),
 

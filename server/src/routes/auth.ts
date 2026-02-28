@@ -61,10 +61,7 @@ function getSessionExpiry(): Date {
   return date;
 }
 
-async function createSession(
-  userId: string,
-  reply: FastifyReply
-): Promise<string> {
+async function createSession(userId: string, reply: FastifyReply): Promise<string> {
   const token = generateSessionToken();
   const expiresAt = getSessionExpiry();
 
@@ -91,14 +88,13 @@ async function clearSession(reply: FastifyReply): Promise<void> {
 
 // ─── Route handlers ──────────────────────────────────────────────────
 
-async function loginHandler(
-  request: FastifyRequest,
-  reply: FastifyReply
-): Promise<void> {
+async function loginHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   // Rate limiting
   const clientIp = request.ip;
   if (!checkRateLimit(clientIp)) {
-    return reply.status(429).send({ error: 'Too many login attempts. Please try again later.' });
+    return reply
+      .status(429)
+      .send({ error: 'Too many login attempts. Please try again later.' });
   }
 
   if (!config.LOCAL_AUTH_ENABLED) {
@@ -107,7 +103,9 @@ async function loginHandler(
 
   const body = loginSchema.safeParse(request.body);
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   const { username, password } = body.data;
@@ -207,7 +205,8 @@ async function oidcCallbackHandler(
         code,
         client_id: config.OIDC_CLIENT_ID,
         client_secret: config.OIDC_CLIENT_SECRET,
-        redirect_uri: config.OIDC_REDIRECT_URI || `${config.CORS_ORIGIN}/auth/oidc/callback`,
+        redirect_uri:
+          config.OIDC_REDIRECT_URI || `${config.CORS_ORIGIN}/auth/oidc/callback`,
       }).toString(),
     });
 
@@ -243,7 +242,12 @@ async function oidcCallbackHandler(
       await db
         .select()
         .from(users)
-        .where(and(eq(users.oidcSubject, userInfo.sub), eq(users.oidcIssuer, config.OIDC_ISSUER)))
+        .where(
+          and(
+            eq(users.oidcSubject, userInfo.sub),
+            eq(users.oidcIssuer, config.OIDC_ISSUER)
+          )
+        )
         .limit(1)
     )[0];
 
@@ -315,10 +319,7 @@ async function logoutHandler(
   return reply.send({ success: true });
 }
 
-async function meHandler(
-  request: FastifyRequest,
-  reply: FastifyReply
-): Promise<void> {
+async function meHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
   if (!request.user) {
     return reply.status(401).send({ error: 'Not authenticated' });
   }

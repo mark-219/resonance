@@ -1,13 +1,6 @@
 import { usePlayerStore } from '@/stores/playerStore';
 import { cn } from '@/lib/cn';
-import {
-  Play,
-  Pause,
-  SkipBack,
-  SkipForward,
-  Volume2,
-  VolumeX,
-} from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
 import { FormatBadge } from '../music/FormatBadge';
 
 export function PlayerBar() {
@@ -30,9 +23,7 @@ export function PlayerBar() {
   if (!currentTrack) {
     return (
       <div className="h-20 border-t border-border-subtle bg-surface-sunken flex items-center justify-center">
-        <span className="text-sm text-text-tertiary">
-          No track playing
-        </span>
+        <span className="text-sm text-text-tertiary">No track playing</span>
       </div>
     );
   }
@@ -59,9 +50,7 @@ export function PlayerBar() {
           <p className="text-sm font-medium text-text-primary truncate">
             {currentTrack.title}
           </p>
-          <p className="text-xs text-text-secondary truncate">
-            {currentTrack.artist}
-          </p>
+          <p className="text-xs text-text-secondary truncate">{currentTrack.artist}</p>
         </div>
         <FormatBadge format={currentTrack.format} className="shrink-0" />
       </div>
@@ -121,11 +110,7 @@ export function PlayerBar() {
           onClick={toggleMute}
           className="p-1.5 text-text-secondary hover:text-text-primary transition-colors"
         >
-          {isMuted || volume === 0 ? (
-            <VolumeX size={16} />
-          ) : (
-            <Volume2 size={16} />
-          )}
+          {isMuted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
         </button>
         <input
           type="range"

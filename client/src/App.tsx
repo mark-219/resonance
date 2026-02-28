@@ -46,9 +46,33 @@ export function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/library" element={<LibraryPage />} />
         <Route path="/browse" element={<BrowsePage />} />
-        <Route path="/playlists" element={<div className="p-6"><h1 className="text-xl font-semibold text-text-primary">Playlists</h1><p className="text-sm text-text-secondary mt-1">Coming soon</p></div>} />
-        <Route path="/collections" element={<div className="p-6"><h1 className="text-xl font-semibold text-text-primary">Collections</h1><p className="text-sm text-text-secondary mt-1">Coming soon</p></div>} />
-        <Route path="/hosts" element={<div className="p-6"><h1 className="text-xl font-semibold text-text-primary">Remote Hosts</h1><p className="text-sm text-text-secondary mt-1">Coming soon</p></div>} />
+        <Route
+          path="/playlists"
+          element={
+            <div className="p-6">
+              <h1 className="text-xl font-semibold text-text-primary">Playlists</h1>
+              <p className="text-sm text-text-secondary mt-1">Coming soon</p>
+            </div>
+          }
+        />
+        <Route
+          path="/collections"
+          element={
+            <div className="p-6">
+              <h1 className="text-xl font-semibold text-text-primary">Collections</h1>
+              <p className="text-sm text-text-secondary mt-1">Coming soon</p>
+            </div>
+          }
+        />
+        <Route
+          path="/hosts"
+          element={
+            <div className="p-6">
+              <h1 className="text-xl font-semibold text-text-primary">Remote Hosts</h1>
+              <p className="text-sm text-text-secondary mt-1">Coming soon</p>
+            </div>
+          }
+        />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -76,7 +76,9 @@ async function createRemoteHostHandler(
 ): Promise<void> {
   const body = createRemoteHostSchema.safeParse(request.body);
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   const [host] = await db
@@ -98,7 +100,9 @@ async function updateRemoteHostHandler(
   const body = updateRemoteHostSchema.safeParse(request.body);
 
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   const [host] = await db
@@ -140,10 +144,16 @@ async function testConnectionHandler(
   const body = testConnectionSchema.safeParse(request.body);
 
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
-  const [host] = await db.select().from(remoteHosts).where(eq(remoteHosts.id, id)).limit(1);
+  const [host] = await db
+    .select()
+    .from(remoteHosts)
+    .where(eq(remoteHosts.id, id))
+    .limit(1);
 
   if (!host) {
     return reply.status(404).send({ error: 'Remote host not found' });

@@ -80,7 +80,9 @@ async function browseRemoteHandler(
 ): Promise<void> {
   const query = browseRemoteSchema.safeParse(request.query);
   if (!query.success) {
-    return reply.status(400).send({ error: 'Invalid query parameters', issues: query.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid query parameters', issues: query.error.issues });
   }
 
   const { hostId, path: userPath } = query.data;
@@ -140,7 +142,9 @@ async function browseLocalHandler(
 ): Promise<void> {
   const query = browseLocalSchema.safeParse(request.query);
   if (!query.success) {
-    return reply.status(400).send({ error: 'Invalid query parameters', issues: query.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid query parameters', issues: query.error.issues });
   }
 
   const { path: userPath } = query.data;

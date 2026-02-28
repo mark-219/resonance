@@ -31,9 +31,7 @@ export function LibraryPage() {
       if (search) params.set('search', search);
       if (formatFilter !== 'all') params.set('format', formatFilter);
       if (showSeedOnly) params.set('seedOnly', 'true');
-      return apiFetch<{ albums: Album[]; total: number }>(
-        `/albums?${params.toString()}`
-      );
+      return apiFetch<{ albums: Album[]; total: number }>(`/albums?${params.toString()}`);
     },
   });
 
@@ -44,9 +42,7 @@ export function LibraryPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-text-primary">Library</h1>
-          <p className="text-sm text-text-secondary mt-0.5">
-            {data?.total ?? 0} albums
-          </p>
+          <p className="text-sm text-text-secondary mt-0.5">{data?.total ?? 0} albums</p>
         </div>
       </div>
 
@@ -157,9 +153,7 @@ function AlbumCard({ album }: { album: Album }) {
       <div className="aspect-square rounded bg-surface-overlay border border-border-subtle flex items-center justify-center mb-2 overflow-hidden group-hover:border-border-strong transition-colors">
         <Music size={32} className="text-text-tertiary" />
       </div>
-      <p className="text-sm font-medium text-text-primary truncate">
-        {album.title}
-      </p>
+      <p className="text-sm font-medium text-text-primary truncate">{album.title}</p>
       <p className="text-xs text-text-secondary truncate">
         {album.artist?.name ?? 'Unknown Artist'}
         {album.year && ` · ${album.year}`}
@@ -183,9 +177,7 @@ function AlbumRow({ album }: { album: Album }) {
         <Music size={16} className="text-text-tertiary" />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-text-primary truncate">
-          {album.title}
-        </p>
+        <p className="text-sm font-medium text-text-primary truncate">{album.title}</p>
         <p className="text-xs text-text-secondary truncate">
           {album.artist?.name ?? 'Unknown Artist'}
         </p>

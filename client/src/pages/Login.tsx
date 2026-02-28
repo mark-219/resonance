@@ -42,9 +42,7 @@ export function Login() {
           <h1 className="text-2xl font-semibold tracking-tight text-text-primary">
             resonance
           </h1>
-          <p className="text-sm text-text-tertiary mt-1">
-            Music library manager
-          </p>
+          <p className="text-sm text-text-tertiary mt-1">Music library manager</p>
         </div>
 
         <div className="bg-surface-raised border border-border-subtle rounded-lg p-6 space-y-5">

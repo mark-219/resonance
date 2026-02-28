@@ -39,11 +39,7 @@ async function streamTrackHandler(
   const { trackId } = request.params as { trackId: string };
 
   // Get track details
-  const [track] = await db
-    .select()
-    .from(tracks)
-    .where(eq(tracks.id, trackId))
-    .limit(1);
+  const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId)).limit(1);
 
   if (!track) {
     return reply.status(404).send({ error: 'Track not found' });

@@ -33,7 +33,9 @@ async function listLibrariesHandler(
 ): Promise<void> {
   const query = paginationSchema.safeParse(request.query);
   if (!query.success) {
-    return reply.status(400).send({ error: 'Invalid query parameters', issues: query.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid query parameters', issues: query.error.issues });
   }
 
   const { limit, offset } = query.data;
@@ -83,7 +85,9 @@ async function createLibraryHandler(
 ): Promise<void> {
   const body = createLibrarySchema.safeParse(request.body);
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   // Either remoteHostId + remotePath or localPath must be provided
@@ -112,7 +116,9 @@ async function updateLibraryHandler(
   const body = updateLibrarySchema.safeParse(request.body);
 
   if (!body.success) {
-    return reply.status(400).send({ error: 'Invalid request', issues: body.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid request', issues: body.error.issues });
   }
 
   const [library] = await db
@@ -190,7 +196,9 @@ async function listScanJobsHandler(
   const query = paginationSchema.safeParse(request.query);
 
   if (!query.success) {
-    return reply.status(400).send({ error: 'Invalid query parameters', issues: query.error.issues });
+    return reply
+      .status(400)
+      .send({ error: 'Invalid query parameters', issues: query.error.issues });
   }
 
   const { limit, offset } = query.data;
@@ -214,10 +222,7 @@ async function listScanJobsHandler(
       .orderBy(desc(scanJobs.createdAt))
       .limit(limit)
       .offset(offset),
-    db
-      .select({ count: scanJobs.id })
-      .from(scanJobs)
-      .where(eq(scanJobs.libraryId, id)),
+    db.select({ count: scanJobs.id }).from(scanJobs).where(eq(scanJobs.libraryId, id)),
   ]);
 
   return reply.send({

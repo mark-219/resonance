@@ -27,9 +27,7 @@ export function Dashboard() {
                 <Icon size={18} className="text-accent" />
               </div>
               <div>
-                <p className="text-2xl font-semibold text-text-primary">
-                  {value}
-                </p>
+                <p className="text-2xl font-semibold text-text-primary">{value}</p>
                 <p className="text-xs text-text-secondary">{label}</p>
               </div>
             </div>
@@ -39,9 +37,7 @@ export function Dashboard() {
 
       {/* Recent activity placeholder */}
       <div className="bg-surface-raised border border-border-subtle rounded-lg p-6">
-        <h2 className="text-sm font-medium text-text-primary mb-4">
-          Recent Activity
-        </h2>
+        <h2 className="text-sm font-medium text-text-primary mb-4">Recent Activity</h2>
         <div className="flex items-center justify-center py-12">
           <p className="text-sm text-text-tertiary">
             No activity yet. Add a library to get started.
