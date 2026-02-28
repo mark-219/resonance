@@ -108,6 +108,24 @@ export interface ScanJob {
   completedAt: string | null;
 }
 
+export interface RemoteHost {
+  id: string;
+  name: string;
+  host: string;
+  port: number;
+  username: string;
+  hostFingerprint: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TestConnectionResult {
+  success: boolean;
+  message: string;
+  fingerprint?: string;
+  needsAcceptance?: boolean;
+}
+
 // ─── Stats ───────────────────────────────────────────────────────────
 
 export function useStats() {
@@ -217,5 +235,91 @@ export function useArtist(id: string | undefined) {
     queryKey: ['artist', id],
     queryFn: () => apiFetch<ArtistDetail>(`/artists/${id}`),
     enabled: !!id,
+  });
+}
+
+// ─── Remote Hosts ───────────────────────────────────────────────────
+
+export function useRemoteHosts() {
+  return useQuery({
+    queryKey: ['remoteHosts'],
+    queryFn: () => apiFetch<RemoteHost[]>('/remote-hosts'),
+  });
+}
+
+export function useCreateRemoteHost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      name: string;
+      host: string;
+      port?: number;
+      username: string;
+      privateKeyPath?: string;
+    }) =>
+      apiFetch<RemoteHost>('/remote-hosts', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['remoteHosts'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useUpdateRemoteHost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...body
+    }: {
+      id: string;
+      name?: string;
+      host?: string;
+      port?: number;
+      username?: string;
+      privateKeyPath?: string;
+    }) =>
+      apiFetch<RemoteHost>(`/remote-hosts/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['remoteHosts'] });
+    },
+  });
+}
+
+export function useDeleteRemoteHost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<{ success: boolean }>(`/remote-hosts/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['remoteHosts'] });
+      qc.invalidateQueries({ queryKey: ['stats'] });
+    },
+  });
+}
+
+export function useTestConnection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      acceptFingerprint = false,
+    }: {
+      id: string;
+      acceptFingerprint?: boolean;
+    }) =>
+      apiFetch<TestConnectionResult>(`/remote-hosts/${id}/test`, {
+        method: 'POST',
+        body: JSON.stringify({ acceptFingerprint }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['remoteHosts'] });
+    },
   });
 }

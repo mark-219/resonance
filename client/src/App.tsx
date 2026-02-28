@@ -10,6 +10,7 @@ import { ArtistsPage } from '@/pages/ArtistsPage';
 import { ArtistDetailPage } from '@/pages/ArtistDetailPage';
 import { BrowsePage } from '@/pages/BrowsePage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { HostsPage } from '@/pages/HostsPage';
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuthStore();
@@ -70,15 +71,7 @@ export function App() {
             </div>
           }
         />
-        <Route
-          path="/hosts"
-          element={
-            <div className="p-6">
-              <h1 className="text-xl font-semibold text-text-primary">Remote Hosts</h1>
-              <p className="text-sm text-text-secondary mt-1">Coming soon</p>
-            </div>
-          }
-        />
+        <Route path="/hosts" element={<HostsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
