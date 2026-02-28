@@ -47,6 +47,10 @@ pnpm-debug.log*
 coverage/
 .nyc_output/
 
+# GitHub Actions self-hosted runner
+.runner/
+_work/
+
 # Misc
 *.tgz
 *.tar.gz

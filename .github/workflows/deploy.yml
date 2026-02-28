@@ -1,0 +1,58 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Prevent concurrent deploys
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to apps
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate environment
+        run: |
+          if [ ! -f "${{ vars.DEPLOY_PATH }}/.env" ]; then
+            echo "::error::.env file not found at ${{ vars.DEPLOY_PATH }}/.env"
+            echo "Run the initial setup script first: ./scripts/setup-server.sh"
+            exit 1
+          fi
+
+      - name: Pull latest code
+        working-directory: ${{ vars.DEPLOY_PATH }}
+        run: |
+          git fetch origin main
+          git reset --hard origin/main
+
+      - name: Build and deploy
+        working-directory: ${{ vars.DEPLOY_PATH }}
+        run: |
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml build --no-cache
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+      - name: Wait for healthy
+        working-directory: ${{ vars.DEPLOY_PATH }}
+        run: |
+          echo "Waiting for services to be healthy..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/api/health > /dev/null 2>&1; then
+              echo "Server is healthy!"
+              exit 0
+            fi
+            echo "  Attempt $i/30 — waiting 2s..."
+            sleep 2
+          done
+          echo "::error::Server failed health check after 60s"
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml logs --tail=50 server
+          exit 1
+
+      - name: Prune old images
+        run: docker image prune -f --filter "until=168h"
