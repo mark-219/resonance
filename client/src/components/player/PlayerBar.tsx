@@ -1,24 +1,31 @@
 import { usePlayerStore } from '@/stores/playerStore';
-import { cn } from '@/lib/cn';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX,
+  Loader2,
+} from 'lucide-react';
 import { FormatBadge } from '../music/FormatBadge';
 
 export function PlayerBar() {
-  const {
-    currentTrack,
-    isPlaying,
-    currentTime,
-    duration,
-    volume,
-    isMuted,
-    pause,
-    resume,
-    next,
-    previous,
-    seek,
-    setVolume,
-    toggleMute,
-  } = usePlayerStore();
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
+  const isBuffering = usePlayerStore((s) => s.isBuffering);
+  const currentTime = usePlayerStore((s) => s.currentTime);
+  const duration = usePlayerStore((s) => s.duration);
+  const volume = usePlayerStore((s) => s.volume);
+  const isMuted = usePlayerStore((s) => s.isMuted);
+  const error = usePlayerStore((s) => s.error);
+  const pause = usePlayerStore((s) => s.pause);
+  const resume = usePlayerStore((s) => s.resume);
+  const next = usePlayerStore((s) => s.next);
+  const previous = usePlayerStore((s) => s.previous);
+  const seek = usePlayerStore((s) => s.seek);
+  const setVolume = usePlayerStore((s) => s.setVolume);
+  const toggleMute = usePlayerStore((s) => s.toggleMute);
 
   if (!currentTrack) {
     return (
@@ -51,6 +58,7 @@ export function PlayerBar() {
             {currentTrack.title}
           </p>
           <p className="text-xs text-text-secondary truncate">{currentTrack.artist}</p>
+          {error && <p className="text-xs text-red-400 truncate">{error}</p>}
         </div>
         <FormatBadge format={currentTrack.format} className="shrink-0" />
       </div>
@@ -68,7 +76,13 @@ export function PlayerBar() {
             onClick={isPlaying ? pause : resume}
             className="p-2 rounded-full bg-text-primary text-text-inverse hover:bg-text-secondary transition-colors"
           >
-            {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
+            {isBuffering ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : isPlaying ? (
+              <Pause size={18} />
+            ) : (
+              <Play size={18} className="ml-0.5" />
+            )}
           </button>
           <button
             onClick={next}

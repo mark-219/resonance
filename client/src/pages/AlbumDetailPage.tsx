@@ -1,8 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAlbum } from '@/api/hooks';
-import { FormatBadge, QualityIndicator } from '@/components/music/FormatBadge';
-import { ArrowLeft, Music, Clock, Play } from 'lucide-react';
-import { usePlayerStore } from '@/stores/playerStore';
+import { FormatBadge } from '@/components/music/FormatBadge';
+import { ArrowLeft, Music, Clock, Volume2 } from 'lucide-react';
+import { usePlayerStore, type PlayerTrack } from '@/stores/playerStore';
+import { isStreamableFormat } from '@/utils/streamableFormats';
+import type { Track } from '@/api/hooks';
 
 function formatDuration(seconds: number | null): string {
   if (!seconds) return '—';
@@ -23,10 +25,30 @@ function formatSampleRate(hz: number | null): string {
   return `${(hz / 1000).toFixed(hz % 1000 === 0 ? 0 : 1)} kHz`;
 }
 
+function toPlayerTrack(
+  track: Track,
+  album: { title: string; artist?: { name: string } | null }
+): PlayerTrack {
+  return {
+    id: track.id,
+    title: track.title,
+    artist: album.artist?.name,
+    album: album.title,
+    duration: track.duration ?? undefined,
+    format: track.format,
+    bitrate: track.bitrate ?? undefined,
+    sampleRate: track.sampleRate ?? undefined,
+    bitDepth: track.bitDepth ?? undefined,
+  };
+}
+
 export function AlbumDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: album, isLoading } = useAlbum(id);
+  const playTrack = usePlayerStore((s) => s.playTrack);
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const isPlaying = usePlayerStore((s) => s.isPlaying);
 
   if (isLoading) {
     return (
@@ -47,7 +69,6 @@ export function AlbumDetailPage() {
   const totalDuration = album.tracks.reduce((sum, t) => sum + (t.duration ?? 0), 0);
   const totalSize = album.tracks.reduce((sum, t) => sum + (t.fileSize ?? 0), 0);
 
-  // Group tracks by disc if multi-disc
   const hasMultipleDiscs = album.tracks.some((t) => t.discNumber && t.discNumber > 1);
   const discGroups = new Map<number, typeof album.tracks>();
   for (const track of album.tracks) {
@@ -56,9 +77,27 @@ export function AlbumDetailPage() {
     discGroups.get(disc)!.push(track);
   }
 
+  const sortedTracks = [...album.tracks].sort((a, b) => {
+    const discDiff = (a.discNumber ?? 1) - (b.discNumber ?? 1);
+    if (discDiff !== 0) return discDiff;
+    return (a.trackNumber ?? 0) - (b.trackNumber ?? 0);
+  });
+
+  function handleTrackClick(track: Track) {
+    if (!isStreamableFormat(track.format)) return;
+
+    const playerTracks = sortedTracks
+      .filter((t) => isStreamableFormat(t.format))
+      .map((t) => toPlayerTrack(t, album!));
+
+    const startIndex = playerTracks.findIndex((t) => t.id === track.id);
+    if (startIndex === -1) return;
+
+    playTrack(playerTracks[startIndex], playerTracks, startIndex);
+  }
+
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
-      {/* Back button */}
       <button
         onClick={() => navigate(-1)}
         className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary transition-colors"
@@ -67,7 +106,6 @@ export function AlbumDetailPage() {
         Back
       </button>
 
-      {/* Album header */}
       <div className="flex gap-6">
         <div className="w-48 h-48 rounded-lg bg-surface-overlay border border-border-subtle flex items-center justify-center shrink-0">
           <Music size={48} className="text-text-tertiary" />
@@ -113,9 +151,7 @@ export function AlbumDetailPage() {
         </div>
       </div>
 
-      {/* Track list */}
       <div className="bg-surface-raised border border-border-subtle rounded-lg overflow-hidden">
-        {/* Header */}
         <div className="grid grid-cols-[2rem_1fr_auto_5rem_5rem] gap-3 px-4 py-2 text-2xs text-text-tertiary uppercase tracking-wider border-b border-border-subtle">
           <span>#</span>
           <span>Title</span>
@@ -126,7 +162,6 @@ export function AlbumDetailPage() {
           <span className="text-right">Size</span>
         </div>
 
-        {/* Tracks */}
         {[...discGroups.entries()].map(([disc, discTracks]) => (
           <div key={disc}>
             {hasMultipleDiscs && (
@@ -136,36 +171,61 @@ export function AlbumDetailPage() {
             )}
             {discTracks
               .sort((a, b) => (a.trackNumber ?? 0) - (b.trackNumber ?? 0))
-              .map((track) => (
-                <div
-                  key={track.id}
-                  className="grid grid-cols-[2rem_1fr_auto_5rem_5rem] gap-3 px-4 py-2.5 hover:bg-surface-overlay transition-colors cursor-pointer group items-center"
-                >
-                  <span className="text-xs text-text-tertiary tabular-nums">
-                    {track.trackNumber ?? '—'}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm text-text-primary truncate group-hover:text-accent transition-colors">
-                      {track.title}
-                    </p>
+              .map((track) => {
+                const streamable = isStreamableFormat(track.format);
+                const isCurrent = currentTrack?.id === track.id;
+
+                return (
+                  <div
+                    key={track.id}
+                    onClick={() => handleTrackClick(track)}
+                    className={`grid grid-cols-[2rem_1fr_auto_5rem_5rem] gap-3 px-4 py-2.5 transition-colors items-center ${
+                      streamable
+                        ? 'hover:bg-surface-overlay cursor-pointer group'
+                        : 'opacity-50 cursor-not-allowed'
+                    } ${isCurrent ? 'bg-surface-overlay' : ''}`}
+                    title={streamable ? undefined : 'Format not playable in browser'}
+                  >
+                    <span className="text-xs tabular-nums">
+                      {isCurrent && isPlaying ? (
+                        <Volume2 size={14} className="text-accent" />
+                      ) : (
+                        <span className="text-text-tertiary">
+                          {track.trackNumber ?? '—'}
+                        </span>
+                      )}
+                    </span>
+                    <div className="min-w-0">
+                      <p
+                        className={`text-sm truncate transition-colors ${
+                          isCurrent
+                            ? 'text-accent font-medium'
+                            : streamable
+                              ? 'text-text-primary group-hover:text-accent'
+                              : 'text-text-tertiary'
+                        }`}
+                      >
+                        {track.title}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FormatBadge format={track.format} />
+                      {track.sampleRate && (
+                        <span className="text-2xs text-text-tertiary font-mono">
+                          {formatSampleRate(track.sampleRate)}
+                          {track.bitDepth ? `/${track.bitDepth}` : ''}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-xs text-text-tertiary tabular-nums text-right">
+                      {formatDuration(track.duration)}
+                    </span>
+                    <span className="text-xs text-text-tertiary tabular-nums text-right">
+                      {formatFileSize(track.fileSize)}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <FormatBadge format={track.format} />
-                    {track.sampleRate && (
-                      <span className="text-2xs text-text-tertiary font-mono">
-                        {formatSampleRate(track.sampleRate)}
-                        {track.bitDepth ? `/${track.bitDepth}` : ''}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-xs text-text-tertiary tabular-nums text-right">
-                    {formatDuration(track.duration)}
-                  </span>
-                  <span className="text-xs text-text-tertiary tabular-nums text-right">
-                    {formatFileSize(track.fileSize)}
-                  </span>
-                </div>
-              ))}
+                );
+              })}
           </div>
         ))}
       </div>

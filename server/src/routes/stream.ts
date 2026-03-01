@@ -4,8 +4,10 @@ import fs from 'fs/promises';
 import { createReadStream } from 'fs';
 import path from 'path';
 import { db } from '../db/index.js';
-import { tracks, albums } from '../db/schema.js';
+import { tracks, albums, libraries, remoteHosts } from '../db/schema.js';
 import { requireAuth } from '../middleware/auth.js';
+import { isStreamableFormat } from '../utils/streamableFormats.js';
+import { sshConnectionManager } from '../services/sshConnectionManager.js';
 
 // ─── Content Type Mapping ──────────────────────────────────────────
 
@@ -38,14 +40,19 @@ async function streamTrackHandler(
 ): Promise<void> {
   const { trackId } = request.params as { trackId: string };
 
-  // Get track details
   const [track] = await db.select().from(tracks).where(eq(tracks.id, trackId)).limit(1);
 
   if (!track) {
     return reply.status(404).send({ error: 'Track not found' });
   }
 
-  // Get album for library info
+  if (!isStreamableFormat(track.format)) {
+    return reply.status(415).send({
+      error: 'Format not streamable in browser',
+      format: track.format,
+    });
+  }
+
   const [album] = await db
     .select()
     .from(albums)
@@ -56,73 +63,13 @@ async function streamTrackHandler(
     return reply.status(404).send({ error: 'Album not found' });
   }
 
+  const contentType = contentTypeMap[track.format] || 'application/octet-stream';
+
   try {
-    // Determine the file path
-    let filePath: string;
-
     if (track.isRemote && album.remoteDirPath) {
-      // TODO: For remote files via SFTP, implement streaming from remote server
-      // This would require:
-      // 1. Connect to the remote SSH host
-      // 2. Open the file via SFTP
-      // 3. Stream it back to the client
-      // For now, throw an error indicating remote streaming is not implemented
-      return reply.status(501).send({
-        error: 'Remote streaming not yet implemented',
-        details: 'SFTP streaming requires additional setup',
-      });
+      return await streamRemote(request, reply, track, album, contentType);
     } else if (!track.isRemote && album.localDirPath) {
-      // Local file streaming
-      filePath = path.join(album.localDirPath, track.filePath);
-
-      // Validate path to prevent traversal
-      const normalized = path.normalize(filePath);
-      const resolved = path.resolve(normalized);
-      const resolvedBase = path.resolve(album.localDirPath);
-
-      if (!resolved.startsWith(resolvedBase)) {
-        return reply.status(400).send({ error: 'Invalid file path' });
-      }
-
-      // Check if file exists
-      await fs.access(resolved);
-
-      // Get file stats
-      const stats = await fs.stat(resolved);
-      const fileSize = stats.size;
-
-      // Set content type based on audio format
-      const contentType = contentTypeMap[track.format] || 'application/octet-stream';
-      reply.header('Content-Type', contentType);
-
-      // Handle range requests for seeking
-      const range = request.headers.range;
-
-      if (range) {
-        const parts = range.replace(/bytes=/, '').split('-');
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
-
-        if (start >= fileSize || end >= fileSize || start > end) {
-          reply.header('Content-Range', `bytes */${fileSize}`);
-          return reply.status(416).send();
-        }
-
-        reply.header('Content-Range', `bytes ${start}-${end}/${fileSize}`);
-        reply.header('Accept-Ranges', 'bytes');
-        reply.header('Content-Length', String(end - start + 1));
-        reply.status(206);
-
-        const stream = createReadStream(resolved, { start, end });
-        return reply.send(stream);
-      }
-
-      // Regular response
-      reply.header('Accept-Ranges', 'bytes');
-      reply.header('Content-Length', String(fileSize));
-
-      const stream = createReadStream(resolved);
-      return reply.send(stream);
+      return await streamLocal(request, reply, track, album, contentType);
     } else {
       return reply.status(400).send({ error: 'File path not available' });
     }
@@ -133,7 +80,6 @@ async function streamTrackHandler(
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
         return reply.status(404).send({ error: 'File not found' });
       }
-
       if ((error as NodeJS.ErrnoException).code === 'EACCES') {
         return reply.status(403).send({ error: 'Access denied' });
       }
@@ -146,9 +92,133 @@ async function streamTrackHandler(
   }
 }
 
+async function streamLocal(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  track: { filePath: string; format: string },
+  album: { localDirPath: string | null },
+  contentType: string
+): Promise<void> {
+  const filePath = path.join(album.localDirPath!, track.filePath);
+
+  const resolved = path.resolve(path.normalize(filePath));
+  const resolvedBase = path.resolve(album.localDirPath!);
+
+  if (!resolved.startsWith(resolvedBase)) {
+    return reply.status(400).send({ error: 'Invalid file path' });
+  }
+
+  await fs.access(resolved);
+  const stats = await fs.stat(resolved);
+  const fileSize = stats.size;
+
+  reply.header('Content-Type', contentType);
+
+  const range = request.headers.range;
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+    if (start >= fileSize || end >= fileSize || start > end) {
+      reply.header('Content-Range', `bytes */${fileSize}`);
+      return reply.status(416).send();
+    }
+
+    reply.header('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+    reply.header('Accept-Ranges', 'bytes');
+    reply.header('Content-Length', String(end - start + 1));
+    reply.status(206);
+
+    return reply.send(createReadStream(resolved, { start, end }));
+  }
+
+  reply.header('Accept-Ranges', 'bytes');
+  reply.header('Content-Length', String(fileSize));
+  return reply.send(createReadStream(resolved));
+}
+
+async function streamRemote(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  track: { filePath: string; format: string; albumId: string },
+  album: { remoteDirPath: string | null; libraryId: string },
+  contentType: string
+): Promise<void> {
+  const [library] = await db
+    .select()
+    .from(libraries)
+    .where(eq(libraries.id, album.libraryId))
+    .limit(1);
+
+  if (!library?.remoteHostId) {
+    return reply
+      .status(400)
+      .send({ error: 'No remote host configured for this library' });
+  }
+
+  const [host] = await db
+    .select()
+    .from(remoteHosts)
+    .where(eq(remoteHosts.id, library.remoteHostId))
+    .limit(1);
+
+  if (!host) {
+    return reply.status(404).send({ error: 'Remote host not found' });
+  }
+
+  const sftp = await sshConnectionManager.getSftp({
+    id: host.id,
+    host: host.host,
+    port: host.port,
+    username: host.username,
+    privateKeyPath: host.privateKeyPath,
+  });
+
+  const remotePath = path.posix.join(album.remoteDirPath!, track.filePath);
+
+  // Validate path to prevent traversal on remote host
+  const normalizedRemote = path.posix.normalize(remotePath);
+  if (!normalizedRemote.startsWith(album.remoteDirPath!)) {
+    return reply.status(400).send({ error: 'Invalid file path' });
+  }
+
+  const stats = await new Promise<{ size: number }>((resolve, reject) => {
+    sftp.stat(remotePath, (err, stats) => {
+      if (err) return reject(err);
+      resolve(stats);
+    });
+  });
+
+  const fileSize = stats.size;
+  reply.header('Content-Type', contentType);
+
+  const range = request.headers.range;
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+    if (start >= fileSize || end >= fileSize || start > end) {
+      reply.header('Content-Range', `bytes */${fileSize}`);
+      return reply.status(416).send();
+    }
+
+    reply.header('Content-Range', `bytes ${start}-${end}/${fileSize}`);
+    reply.header('Accept-Ranges', 'bytes');
+    reply.header('Content-Length', String(end - start + 1));
+    reply.status(206);
+
+    return reply.send(sftp.createReadStream(remotePath, { start, end }));
+  }
+
+  reply.header('Accept-Ranges', 'bytes');
+  reply.header('Content-Length', String(fileSize));
+  return reply.send(sftp.createReadStream(remotePath));
+}
+
 // ─── Plugin ───────────────────────────────────────────────────────────
 
 export async function streamRoutes(app: FastifyInstance) {
-  // Stream audio file
   app.get('/:trackId', { preHandler: [requireAuth] }, streamTrackHandler);
 }
