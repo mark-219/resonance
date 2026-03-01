@@ -206,6 +206,7 @@ async function scanLibraryHandler(
     userId: request.user!.id,
     libraryPath,
     isRemote: !!library.remoteHostId,
+    remoteHostId: library.remoteHostId ?? undefined,
   });
 
   return reply.status(201).send({

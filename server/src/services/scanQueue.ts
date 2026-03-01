@@ -17,6 +17,7 @@ export interface ScanJobData {
   userId: string;
   libraryPath: string;
   isRemote: boolean;
+  remoteHostId?: string;
 }
 
 // ─── Redis connection config ─────────────────────────────────────────
@@ -59,7 +60,7 @@ export function startScanWorker(): Worker<ScanJobData> {
   worker = new Worker<ScanJobData>(
     QUEUE_NAME,
     async (job: Job<ScanJobData>) => {
-      const { jobId, libraryId, userId, libraryPath, isRemote } = job.data;
+      const { jobId, libraryId, userId, libraryPath, isRemote, remoteHostId } = job.data;
 
       console.log(`[scan-worker] Starting scan job ${jobId} for library ${libraryId}`);
 
@@ -69,6 +70,7 @@ export function startScanWorker(): Worker<ScanJobData> {
         userId,
         libraryPath,
         isRemote,
+        remoteHostId,
       });
 
       console.log(`[scan-worker] Completed scan job ${jobId}`);
