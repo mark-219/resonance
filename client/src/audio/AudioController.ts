@@ -11,9 +11,10 @@ interface Track {
 interface AudioCallbacks {
   onTimeUpdate: (time: number) => void;
   onDurationChange: (duration: number) => void;
-  onTrackEnd: () => void;
+  onTrackChange: (track: Track, queueIndex: number) => void;
   onPlayStateChange: (playing: boolean) => void;
   onBufferingChange: (buffering: boolean) => void;
+  onQueueEnd: () => void;
   onError: (error: string) => void;
 }
 
@@ -22,11 +23,13 @@ const PRELOAD_THRESHOLD_SECONDS = 10;
 export class AudioController {
   private primary: HTMLAudioElement;
   private preload: HTMLAudioElement;
+  private primaryAbort: AbortController;
   private callbacks: AudioCallbacks;
   private queue: Track[] = [];
   private queueIndex = -1;
   private preloadedIndex = -1;
   private consecutiveErrors = 0;
+  private mediaSessionRegistered = false;
 
   constructor(callbacks: AudioCallbacks) {
     this.callbacks = callbacks;
@@ -35,31 +38,32 @@ export class AudioController {
     this.primary.preload = 'auto';
     this.preload.preload = 'auto';
 
-    this.attachListeners(this.primary);
+    this.primaryAbort = new AbortController();
+    this.attachListeners(this.primary, this.primaryAbort.signal);
   }
 
   private streamUrl(trackId: string): string {
     return `/api/stream/${trackId}`;
   }
 
-  private attachListeners(el: HTMLAudioElement): void {
+  private attachListeners(el: HTMLAudioElement, signal: AbortSignal): void {
     el.addEventListener('timeupdate', () => {
       this.callbacks.onTimeUpdate(el.currentTime);
       this.maybePreloadNext();
-    });
+    }, { signal });
 
     el.addEventListener('durationchange', () => {
       if (el.duration && isFinite(el.duration)) {
         this.callbacks.onDurationChange(el.duration);
       }
-    });
+    }, { signal });
 
-    el.addEventListener('play', () => this.callbacks.onPlayStateChange(true));
-    el.addEventListener('pause', () => this.callbacks.onPlayStateChange(false));
-    el.addEventListener('waiting', () => this.callbacks.onBufferingChange(true));
-    el.addEventListener('playing', () => this.callbacks.onBufferingChange(false));
+    el.addEventListener('play', () => this.callbacks.onPlayStateChange(true), { signal });
+    el.addEventListener('pause', () => this.callbacks.onPlayStateChange(false), { signal });
+    el.addEventListener('waiting', () => this.callbacks.onBufferingChange(true), { signal });
+    el.addEventListener('playing', () => this.callbacks.onBufferingChange(false), { signal });
 
-    el.addEventListener('ended', () => this.handleTrackEnd());
+    el.addEventListener('ended', () => this.handleTrackEnd(), { signal });
 
     el.addEventListener('error', () => {
       const err = el.error?.message || 'Playback error';
@@ -69,7 +73,7 @@ export class AudioController {
       if (this.consecutiveErrors < 2) {
         setTimeout(() => this.advanceQueue(), 2000);
       }
-    });
+    }, { signal });
   }
 
   private maybePreloadNext(): void {
@@ -89,38 +93,51 @@ export class AudioController {
   }
 
   private handleTrackEnd(): void {
-    this.callbacks.onTrackEnd();
     this.advanceQueue();
   }
 
   private advanceQueue(): void {
     const nextIndex = this.queueIndex + 1;
-    if (nextIndex >= this.queue.length) return;
+    if (nextIndex >= this.queue.length) {
+      this.callbacks.onQueueEnd();
+      return;
+    }
 
     this.queueIndex = nextIndex;
+    const nextTrack = this.queue[nextIndex];
+
+    // Notify store of track change (single source of truth)
+    this.callbacks.onTrackChange(nextTrack, nextIndex);
 
     if (nextIndex === this.preloadedIndex) {
+      // Detach listeners from old primary
+      this.primaryAbort.abort();
+
       const oldPrimary = this.primary;
       oldPrimary.pause();
       oldPrimary.removeAttribute('src');
       oldPrimary.load();
 
+      // Swap elements
       this.primary = this.preload;
       this.preload = oldPrimary;
-      this.attachListeners(this.primary);
+
+      // Attach fresh listeners to new primary
+      this.primaryAbort = new AbortController();
+      this.attachListeners(this.primary, this.primaryAbort.signal);
 
       this.primary.play().then(() => {
         this.consecutiveErrors = 0;
       }).catch(() => {});
     } else {
-      this.primary.src = this.streamUrl(this.queue[nextIndex].id);
+      this.primary.src = this.streamUrl(nextTrack.id);
       this.primary.play().then(() => {
         this.consecutiveErrors = 0;
       }).catch(() => {});
     }
 
     this.preloadedIndex = -1;
-    this.updateMediaSession(this.queue[nextIndex]);
+    this.updateMediaSession(nextTrack);
   }
 
   play(track: Track, queue: Track[], startIndex: number): void {
@@ -133,6 +150,7 @@ export class AudioController {
     this.primary.play().catch(() => {});
 
     this.updateMediaSession(track);
+    this.registerMediaSessionHandlers();
   }
 
   pause(): void {
@@ -165,7 +183,7 @@ export class AudioController {
     }
 
     if (this.queueIndex > 0) {
-      this.queueIndex -= 2;
+      this.queueIndex -= 2; // advanceQueue increments by 1
       this.preloadedIndex = -1;
       this.advanceQueue();
     }
@@ -176,9 +194,26 @@ export class AudioController {
   }
 
   destroy(): void {
+    this.primaryAbort.abort();
     this.primary.pause();
     this.primary.removeAttribute('src');
     this.preload.removeAttribute('src');
+  }
+
+  // ─── Media Session API ──────────────────────────────────────────
+
+  private registerMediaSessionHandlers(): void {
+    if (!('mediaSession' in navigator) || this.mediaSessionRegistered) return;
+
+    navigator.mediaSession.setActionHandler('play', () => this.resume());
+    navigator.mediaSession.setActionHandler('pause', () => this.pause());
+    navigator.mediaSession.setActionHandler('previoustrack', () => this.previous());
+    navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime !== undefined) this.seek(details.seekTime);
+    });
+
+    this.mediaSessionRegistered = true;
   }
 
   private updateMediaSession(track: Track): void {
@@ -191,14 +226,6 @@ export class AudioController {
       artwork: track.coverArtPath
         ? [{ src: track.coverArtPath, sizes: '512x512', type: 'image/jpeg' }]
         : [],
-    });
-
-    navigator.mediaSession.setActionHandler('play', () => this.resume());
-    navigator.mediaSession.setActionHandler('pause', () => this.pause());
-    navigator.mediaSession.setActionHandler('previoustrack', () => this.previous());
-    navigator.mediaSession.setActionHandler('nexttrack', () => this.next());
-    navigator.mediaSession.setActionHandler('seekto', (details) => {
-      if (details.seekTime !== undefined) this.seek(details.seekTime);
     });
   }
 

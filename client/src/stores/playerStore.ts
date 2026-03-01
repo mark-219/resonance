@@ -40,12 +40,14 @@ interface PlayerState {
   setVolume: (volume: number) => void;
   toggleMute: () => void;
 
+  // Internal callbacks from AudioController (single source of truth)
   _updateTime: (time: number) => void;
   _setDuration: (duration: number) => void;
   _setPlaying: (playing: boolean) => void;
   _setBuffering: (buffering: boolean) => void;
+  _onTrackChange: (track: PlayerTrack, queueIndex: number) => void;
+  _onQueueEnd: () => void;
   _setError: (error: string) => void;
-  _onTrackEnd: () => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
@@ -68,9 +70,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const controller = new AudioController({
       onTimeUpdate: (time) => get()._updateTime(time),
       onDurationChange: (dur) => get()._setDuration(dur),
-      onTrackEnd: () => get()._onTrackEnd(),
+      onTrackChange: (track, idx) => get()._onTrackChange(track as PlayerTrack, idx),
       onPlayStateChange: (playing) => get()._setPlaying(playing),
       onBufferingChange: (buffering) => get()._setBuffering(buffering),
+      onQueueEnd: () => get()._onQueueEnd(),
       onError: (err) => get()._setError(err),
     });
 
@@ -103,41 +106,14 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().audioController?.resume();
   },
 
+  // Delegate to AudioController — it will call back via onTrackChange
   next: () => {
-    const { audioController, queue, queueIndex } = get();
-    if (!audioController || queueIndex >= queue.length - 1) return;
-
-    const nextIndex = queueIndex + 1;
-    set({
-      currentTrack: queue[nextIndex],
-      queueIndex: nextIndex,
-      currentTime: 0,
-      error: null,
-    });
-
-    audioController.next();
+    get().audioController?.next();
   },
 
+  // Delegate to AudioController — it will call back via onTrackChange
   previous: () => {
-    const { audioController, queue, queueIndex, currentTime } = get();
-    if (!audioController) return;
-
-    if (currentTime > 3) {
-      audioController.previous();
-      set({ currentTime: 0 });
-      return;
-    }
-
-    if (queueIndex > 0) {
-      const prevIndex = queueIndex - 1;
-      set({
-        currentTrack: queue[prevIndex],
-        queueIndex: prevIndex,
-        currentTime: 0,
-        error: null,
-      });
-      audioController.previous();
-    }
+    get().audioController?.previous();
   },
 
   seek: (time) => {
@@ -162,6 +138,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     }
   },
 
+  // ─── Internal callbacks (AudioController is source of truth) ────
+
   _updateTime: (time) => set({ currentTime: time }),
   _setDuration: (duration) => set({ duration }),
   _setPlaying: (playing) => {
@@ -169,18 +147,8 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     get().audioController?.updatePlaybackState(playing);
   },
   _setBuffering: (buffering) => set({ isBuffering: buffering }),
+  _onTrackChange: (track, queueIndex) =>
+    set({ currentTrack: track, queueIndex, currentTime: 0, error: null }),
+  _onQueueEnd: () => set({ isPlaying: false }),
   _setError: (error) => set({ error }),
-  _onTrackEnd: () => {
-    const { queue, queueIndex } = get();
-    const nextIndex = queueIndex + 1;
-    if (nextIndex < queue.length) {
-      set({
-        currentTrack: queue[nextIndex],
-        queueIndex: nextIndex,
-        currentTime: 0,
-      });
-    } else {
-      set({ isPlaying: false });
-    }
-  },
 }));

@@ -175,6 +175,12 @@ async function streamRemote(
 
   const remotePath = path.posix.join(album.remoteDirPath!, track.filePath);
 
+  // Validate path to prevent traversal on remote host
+  const normalizedRemote = path.posix.normalize(remotePath);
+  if (!normalizedRemote.startsWith(album.remoteDirPath!)) {
+    return reply.status(400).send({ error: 'Invalid file path' });
+  }
+
   const stats = await new Promise<{ size: number }>((resolve, reject) => {
     sftp.stat(remotePath, (err, stats) => {
       if (err) return reject(err);

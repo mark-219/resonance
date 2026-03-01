@@ -135,7 +135,7 @@ export class SshConnectionManager {
   }
 
   async closeAll(): Promise<void> {
-    for (const [id, entry] of this.pool) {
+    for (const [, entry] of this.pool) {
       if (entry.idleTimer) clearTimeout(entry.idleTimer);
       entry.client.end();
     }
