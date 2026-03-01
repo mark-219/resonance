@@ -147,12 +147,23 @@ function HostFormModal({ host, onClose }: { host?: RemoteHost; onClose: () => vo
             />
           </Field>
 
-          <Field label="Private Key Path" hint="Path on the server filesystem">
+          <Field
+            label="Private Key Path"
+            hint={
+              isEditing && host?.hasPrivateKey && !form.privateKeyPath.trim()
+                ? 'A key is already configured. Leave blank to keep it, or enter a new path to replace it.'
+                : 'Path on the server filesystem (e.g. /root/.ssh/vm-access)'
+            }
+          >
             <input
               type="text"
               value={form.privateKeyPath}
               onChange={(e) => setForm((f) => ({ ...f, privateKeyPath: e.target.value }))}
-              placeholder="/home/user/.ssh/id_ed25519"
+              placeholder={
+                isEditing && host?.hasPrivateKey
+                  ? 'Key configured — leave blank to keep'
+                  : '/home/user/.ssh/id_ed25519'
+              }
               className="w-full px-3 py-2 rounded bg-surface-raised border border-border text-sm text-text-primary placeholder:text-text-tertiary focus:border-accent transition-colors"
             />
           </Field>
@@ -333,8 +344,13 @@ function HostCard({
   const [testResult, setTestResult] = useState<TestConnectionResult | null>(null);
 
   async function handleTest(acceptFingerprint = false) {
-    const result = await testMut.mutateAsync({ id: host.id, acceptFingerprint });
-    setTestResult(result);
+    try {
+      const result = await testMut.mutateAsync({ id: host.id, acceptFingerprint });
+      setTestResult(result);
+    } catch {
+      // Error is available via testMut.error — rendered below
+      setTestResult(null);
+    }
   }
 
   return (
@@ -395,6 +411,19 @@ function HostCard({
         </span>
         <span>Added {new Date(host.createdAt).toLocaleDateString()}</span>
       </div>
+
+      {testMut.error && !testResult && (
+        <div className="rounded-md border px-3 py-2 text-sm flex items-start gap-2 bg-error/10 border-error/20 text-error">
+          <XCircle size={16} className="mt-0.5 shrink-0" />
+          <p className="flex-1 min-w-0">{testMut.error.message}</p>
+          <button
+            onClick={() => testMut.reset()}
+            className="shrink-0 opacity-60 hover:opacity-100"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {testResult && (
         <TestResultBanner

@@ -115,6 +115,7 @@ export interface RemoteHost {
   host: string;
   port: number;
   username: string;
+  hasPrivateKey: boolean;
   hostFingerprint: string | null;
   createdAt: string;
   updatedAt: string;
