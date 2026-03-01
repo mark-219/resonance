@@ -1,5 +1,13 @@
 import { usePlayerStore } from '@/stores/playerStore';
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import {
+  Play,
+  Pause,
+  SkipBack,
+  SkipForward,
+  Volume2,
+  VolumeX,
+  Loader2,
+} from 'lucide-react';
 import { FormatBadge } from '../music/FormatBadge';
 
 export function PlayerBar() {
@@ -50,9 +58,7 @@ export function PlayerBar() {
             {currentTrack.title}
           </p>
           <p className="text-xs text-text-secondary truncate">{currentTrack.artist}</p>
-          {error && (
-            <p className="text-xs text-red-400 truncate">{error}</p>
-          )}
+          {error && <p className="text-xs text-red-400 truncate">{error}</p>}
         </div>
         <FormatBadge format={currentTrack.format} className="shrink-0" />
       </div>

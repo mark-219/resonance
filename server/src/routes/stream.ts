@@ -152,7 +152,9 @@ async function streamRemote(
     .limit(1);
 
   if (!library?.remoteHostId) {
-    return reply.status(400).send({ error: 'No remote host configured for this library' });
+    return reply
+      .status(400)
+      .send({ error: 'No remote host configured for this library' });
   }
 
   const [host] = await db

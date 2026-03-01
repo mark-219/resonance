@@ -47,33 +47,51 @@ export class AudioController {
   }
 
   private attachListeners(el: HTMLAudioElement, signal: AbortSignal): void {
-    el.addEventListener('timeupdate', () => {
-      this.callbacks.onTimeUpdate(el.currentTime);
-      this.maybePreloadNext();
-    }, { signal });
+    el.addEventListener(
+      'timeupdate',
+      () => {
+        this.callbacks.onTimeUpdate(el.currentTime);
+        this.maybePreloadNext();
+      },
+      { signal }
+    );
 
-    el.addEventListener('durationchange', () => {
-      if (el.duration && isFinite(el.duration)) {
-        this.callbacks.onDurationChange(el.duration);
-      }
-    }, { signal });
+    el.addEventListener(
+      'durationchange',
+      () => {
+        if (el.duration && isFinite(el.duration)) {
+          this.callbacks.onDurationChange(el.duration);
+        }
+      },
+      { signal }
+    );
 
     el.addEventListener('play', () => this.callbacks.onPlayStateChange(true), { signal });
-    el.addEventListener('pause', () => this.callbacks.onPlayStateChange(false), { signal });
-    el.addEventListener('waiting', () => this.callbacks.onBufferingChange(true), { signal });
-    el.addEventListener('playing', () => this.callbacks.onBufferingChange(false), { signal });
+    el.addEventListener('pause', () => this.callbacks.onPlayStateChange(false), {
+      signal,
+    });
+    el.addEventListener('waiting', () => this.callbacks.onBufferingChange(true), {
+      signal,
+    });
+    el.addEventListener('playing', () => this.callbacks.onBufferingChange(false), {
+      signal,
+    });
 
     el.addEventListener('ended', () => this.handleTrackEnd(), { signal });
 
-    el.addEventListener('error', () => {
-      const err = el.error?.message || 'Playback error';
-      this.callbacks.onError(err);
-      this.consecutiveErrors++;
+    el.addEventListener(
+      'error',
+      () => {
+        const err = el.error?.message || 'Playback error';
+        this.callbacks.onError(err);
+        this.consecutiveErrors++;
 
-      if (this.consecutiveErrors < 2) {
-        setTimeout(() => this.advanceQueue(), 2000);
-      }
-    }, { signal });
+        if (this.consecutiveErrors < 2) {
+          setTimeout(() => this.advanceQueue(), 2000);
+        }
+      },
+      { signal }
+    );
   }
 
   private maybePreloadNext(): void {
@@ -126,14 +144,20 @@ export class AudioController {
       this.primaryAbort = new AbortController();
       this.attachListeners(this.primary, this.primaryAbort.signal);
 
-      this.primary.play().then(() => {
-        this.consecutiveErrors = 0;
-      }).catch(() => {});
+      this.primary
+        .play()
+        .then(() => {
+          this.consecutiveErrors = 0;
+        })
+        .catch(() => {});
     } else {
       this.primary.src = this.streamUrl(nextTrack.id);
-      this.primary.play().then(() => {
-        this.consecutiveErrors = 0;
-      }).catch(() => {});
+      this.primary
+        .play()
+        .then(() => {
+          this.consecutiveErrors = 0;
+        })
+        .catch(() => {});
     }
 
     this.preloadedIndex = -1;

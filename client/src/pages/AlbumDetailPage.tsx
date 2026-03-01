@@ -25,7 +25,10 @@ function formatSampleRate(hz: number | null): string {
   return `${(hz / 1000).toFixed(hz % 1000 === 0 ? 0 : 1)} kHz`;
 }
 
-function toPlayerTrack(track: Track, album: { title: string; artist?: { name: string } | null }): PlayerTrack {
+function toPlayerTrack(
+  track: Track,
+  album: { title: string; artist?: { name: string } | null }
+): PlayerTrack {
   return {
     id: track.id,
     title: track.title,
@@ -187,7 +190,9 @@ export function AlbumDetailPage() {
                       {isCurrent && isPlaying ? (
                         <Volume2 size={14} className="text-accent" />
                       ) : (
-                        <span className="text-text-tertiary">{track.trackNumber ?? '—'}</span>
+                        <span className="text-text-tertiary">
+                          {track.trackNumber ?? '—'}
+                        </span>
                       )}
                     </span>
                     <div className="min-w-0">

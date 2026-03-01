@@ -36,10 +36,7 @@ afterEach(async () => {
 });
 
 async function createLocalTrack(format: string = 'FLAC') {
-  const [artist] = await db
-    .insert(artists)
-    .values({ name: 'Test Artist' })
-    .returning();
+  const [artist] = await db.insert(artists).values({ name: 'Test Artist' }).returning();
 
   const [library] = await db
     .insert(libraries)
