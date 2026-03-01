@@ -13,7 +13,9 @@ import { db } from '../db/index.js';
 import { libraries, artists, albums, tracks, scanJobs } from '../db/schema.js';
 import {
   walkLocalLibrary,
+  walkRemoteLibrary,
   readFileBuffer,
+  readRemoteFileBuffer,
   countAudioFiles,
   type DiscoveredAlbumDir,
 } from './directoryWalker.js';
@@ -24,6 +26,8 @@ import {
   emitScanComplete,
   emitNotification,
 } from '../routes/events.js';
+import { sshConnectionManager } from './sshConnectionManager.js';
+import { remoteHosts } from '../db/schema.js';
 
 // ─── Types ────────────────────────────────────────────────────────────
 
@@ -33,6 +37,7 @@ interface ScanContext {
   userId: string;
   libraryPath: string;
   isRemote: boolean;
+  remoteHostId?: string;
 }
 
 // ─── Artist cache (per scan) ─────────────────────────────────────────
@@ -146,17 +151,58 @@ export async function runScan(ctx: ScanContext): Promise<void> {
   emitNotification(userId, 'Scan started', `Scanning library: ${libraryName}`, 'info');
 
   try {
-    // Phase 1: Discover directories
-    const albumDirs = await walkLocalLibrary(libraryPath, (dir) => {
-      emitScanProgress(
-        userId,
-        jobId,
-        libraryId,
-        0,
-        0,
-        `Discovering: ${path.basename(dir)}`
-      );
-    });
+    // Resolve readFile function and album dirs based on local vs remote
+    let albumDirs: DiscoveredAlbumDir[];
+    let readFile: (filePath: string) => Promise<Buffer>;
+
+    if (isRemote && ctx.remoteHostId) {
+      // Fetch remote host config from DB
+      const [host] = await db
+        .select({
+          id: remoteHosts.id,
+          host: remoteHosts.host,
+          port: remoteHosts.port,
+          username: remoteHosts.username,
+          privateKeyPath: remoteHosts.privateKeyPath,
+        })
+        .from(remoteHosts)
+        .where(eq(remoteHosts.id, ctx.remoteHostId))
+        .limit(1);
+
+      if (!host) {
+        throw new Error(`Remote host ${ctx.remoteHostId} not found`);
+      }
+
+      const sftp = await sshConnectionManager.getSftp(host);
+
+      // Phase 1: Discover directories via SFTP
+      albumDirs = await walkRemoteLibrary(sftp, libraryPath, (dir) => {
+        emitScanProgress(
+          userId,
+          jobId,
+          libraryId,
+          0,
+          0,
+          `Discovering: ${path.basename(dir)}`
+        );
+      });
+
+      readFile = (filePath: string) => readRemoteFileBuffer(sftp, filePath);
+    } else {
+      // Phase 1: Discover directories locally
+      albumDirs = await walkLocalLibrary(libraryPath, (dir) => {
+        emitScanProgress(
+          userId,
+          jobId,
+          libraryId,
+          0,
+          0,
+          `Discovering: ${path.basename(dir)}`
+        );
+      });
+
+      readFile = readFileBuffer;
+    }
 
     const totalFiles = countAudioFiles(albumDirs);
 
@@ -178,7 +224,7 @@ export async function runScan(ctx: ScanContext): Promise<void> {
     let processedFiles = 0;
 
     for (const albumDir of albumDirs) {
-      await processAlbumDir(albumDir, ctx, totalFiles, () => {
+      await processAlbumDir(albumDir, ctx, totalFiles, readFile, () => {
         processedFiles++;
 
         // Emit progress every 5 files (avoid flooding SSE)
@@ -252,6 +298,7 @@ async function processAlbumDir(
   albumDir: DiscoveredAlbumDir,
   ctx: ScanContext,
   _totalFiles: number,
+  readFile: (filePath: string) => Promise<Buffer>,
   onFileProcessed: () => void
 ): Promise<void> {
   const { libraryId, isRemote } = ctx;
@@ -264,7 +311,7 @@ async function processAlbumDir(
 
   for (const file of albumDir.audioFiles) {
     try {
-      const buffer = await readFileBuffer(file.absolutePath);
+      const buffer = await readFile(file.absolutePath);
       const meta = await extractMetadata(buffer);
 
       // Determine artist name: prefer albumArtist tag, fall back to artist tag,

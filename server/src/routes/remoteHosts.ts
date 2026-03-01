@@ -44,6 +44,7 @@ async function listRemoteHostsHandler(
       host: remoteHosts.host,
       port: remoteHosts.port,
       username: remoteHosts.username,
+      privateKeyPath: remoteHosts.privateKeyPath,
       hostFingerprint: remoteHosts.hostFingerprint,
       createdAt: remoteHosts.createdAt,
       updatedAt: remoteHosts.updatedAt,
@@ -51,7 +52,12 @@ async function listRemoteHostsHandler(
     .from(remoteHosts)
     .orderBy(desc(remoteHosts.createdAt));
 
-  return reply.send(hosts);
+  return reply.send(
+    hosts.map(({ privateKeyPath, ...rest }) => ({
+      ...rest,
+      hasPrivateKey: !!privateKeyPath,
+    }))
+  );
 }
 
 async function getRemoteHostHandler(
@@ -67,6 +73,7 @@ async function getRemoteHostHandler(
       host: remoteHosts.host,
       port: remoteHosts.port,
       username: remoteHosts.username,
+      privateKeyPath: remoteHosts.privateKeyPath,
       hostFingerprint: remoteHosts.hostFingerprint,
       createdAt: remoteHosts.createdAt,
       updatedAt: remoteHosts.updatedAt,
@@ -79,7 +86,8 @@ async function getRemoteHostHandler(
     return reply.status(404).send({ error: 'Remote host not found' });
   }
 
-  return reply.send(host);
+  const { privateKeyPath, ...rest } = host;
+  return reply.send({ ...rest, hasPrivateKey: !!privateKeyPath });
 }
 
 async function createRemoteHostHandler(
@@ -178,7 +186,7 @@ async function testConnectionHandler(
       try {
         privateKey = readFileSync(host.privateKeyPath);
       } catch (err) {
-        return reply.status(400).send({
+        return reply.send({
           success: false,
           message: `Cannot read private key: ${err instanceof Error ? err.message : 'Unknown error'}`,
         });
@@ -188,33 +196,14 @@ async function testConnectionHandler(
     // Perform real SSH connection test
     const result = await new Promise<{ fingerprint: string }>((resolve, reject) => {
       const conn = new SSHClient();
+      let fingerprint = 'unknown';
       const timeout = setTimeout(() => {
         conn.end();
         reject(new Error('Connection timed out after 10 seconds'));
       }, 10_000);
 
-      conn.on('handshake', (negotiated) => {
-        // Extract the host key fingerprint from the connection
-        // The handshake event fires after key exchange, meaning we're connected
-        // We get the actual fingerprint via the hostkeys event or compute it
-      });
-
       conn.on('ready', () => {
         clearTimeout(timeout);
-        // Get the fingerprint from the internal key exchange state
-        const key = (conn as unknown as { _sock?: { _host_key?: Buffer } })._sock
-          ?._host_key;
-        let fingerprint = 'unknown';
-
-        // ssh2 stores the host key hash internally; we compute SHA256 fingerprint
-        // from the server's host key available after handshake
-        const transport = (conn as unknown as { _protocol?: { _hostKey?: Buffer } })
-          ._protocol;
-        if (transport?._hostKey) {
-          const hash = createHash('sha256').update(transport._hostKey).digest('base64');
-          fingerprint = `SHA256:${hash}`;
-        }
-
         conn.end();
         resolve({ fingerprint });
       });
@@ -232,6 +221,12 @@ async function testConnectionHandler(
         // If no private key, ssh2 will attempt agent-based auth
         agent: !privateKey ? process.env.SSH_AUTH_SOCK : undefined,
         readyTimeout: 10_000,
+        // Capture the raw host key and compute SHA256 fingerprint
+        hostVerifier: (key: Buffer) => {
+          const hash = createHash('sha256').update(key).digest('base64');
+          fingerprint = `SHA256:${hash}`;
+          return true; // Accept all keys — TOFU logic handles verification after
+        },
       });
     });
 
